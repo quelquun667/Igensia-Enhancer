@@ -1,0 +1,1 @@
+Augmenter la version de l'extension dans le fichier manifest en cohésion avec l'importance de la modification effectuer
