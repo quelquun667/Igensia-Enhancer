@@ -1,0 +1,124 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0; /* Supprimer le padding du body pour laisser le container gérer */
+    background-color: #f4f4f4;
+    color: #333;
+    /* Supprimer la largeur fixe ici, le container gérera */
+}
+
+.container {
+    width: 100%; /* Le conteneur prend toute la largeur disponible */
+    box-sizing: border-box; /* Inclure padding et border dans la largeur */
+    margin: 0 auto;
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    color: #260d66; /* Couleur primaire d'Igensia */
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+input[type="text"],
+textarea,
+input[type="date"] {
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+button {
+    background-color: #260d66; /* Couleur primaire d'Igensia */
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #513d85; /* Une teinte plus claire pour le survol */
+}
+
+.devoir-item {
+    background-color: #f9f9f9;
+    border: 1px solid #eee;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.devoir-item.completed {
+    background-color: #e6ffe6;
+    border-color: #aaffaa;
+}
+
+.devoir-item h3 {
+    margin: 0;
+    color: #260d66;
+    font-size: 16px;
+}
+
+.devoir-item p {
+    margin: 0;
+    font-size: 13px;
+    color: #555;
+}
+
+.devoir-item .due-date {
+    font-size: 12px;
+    color: #777;
+}
+
+.devoir-actions {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.devoir-actions button {
+    padding: 5px 10px;
+    font-size: 12px;
+}
+
+.devoir-actions .complete-btn {
+    background-color: #28a745; /* Vert pour "Terminé" */
+}
+
+.devoir-actions .complete-btn:hover {
+    background-color: #218838;
+}
+
+.devoir-actions .delete-btn {
+    background-color: #dc3545; /* Rouge pour "Supprimer" */
+}
+
+.devoir-actions .delete-btn:hover {
+    background-color: #c82333;
+}
+
+.devoir-actions .edit-btn {
+    background-color: #ffc107; /* Jaune pour "Modifier" */
+    color: #333;
+}
+
+.devoir-actions .edit-btn:hover {
+    background-color: #e0a800;
+}

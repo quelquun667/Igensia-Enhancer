@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mes Devoirs</title>
+    <link rel="stylesheet" href="devoirs.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Mes Devoirs</h1>
+
+        <form id="devoir-form">
+            <input type="text" id="devoir-title" placeholder="Titre du devoir" required>
+            <textarea id="devoir-description" placeholder="Description du devoir"></textarea>
+            <input type="date" id="devoir-due-date">
+            <button type="submit">Ajouter Devoir</button>
+        </form>
+
+        <div id="devoir-list">
+            <!-- Les devoirs seront affichés ici -->
+        </div>
+    </div>
+    <script src="devoirs.js"></script>
+</body>
+</html>
