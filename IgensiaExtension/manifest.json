@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Igensia Enhancer",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "Ajoute des espaces et améliore l'affichage sur le site MonCampus Igensia.",
   "permissions": ["activeTab", "scripting", "storage"],
   "host_permissions": ["https://moncampus.igensia-education.fr/*", "https://ws-notes-igs.wigorservices.net/*"],
