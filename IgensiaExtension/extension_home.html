@@ -16,8 +16,26 @@
                 <!-- D'autres boutons pour de futures fonctionnalités pourraient être ajoutés ici -->
             </div>
         </div>
+
+        <div id="settings-panel" class="settings-panel">
+            <h2>Paramètres</h2>
+            <div class="theme-selection">
+                <h3>Thèmes</h3>
+                <button class="theme-btn" data-theme="default">Défaut</button>
+                <button class="theme-btn" data-theme="dark">Sombre</button>
+                <button class="theme-btn" data-theme="light">Clair</button>
+            </div>
+            <button id="close-settings-btn">Fermer</button>
+        </div>
+
         <iframe id="devoirs-iframe" src="devoirs.html" style="display:none; width:100%; height:400px; border:none;"></iframe>
     </div>
+    <button id="settings-btn" class="settings-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="24px" height="24px">
+            <path d="M0 0h24v24H0z" fill="none"/>
+            <path d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.09-.76-1.71-1.06L14.46 2.5c-.09-.22-.3-.38-.53-.38h-4c-.23 0-.44.16-.53.38L9.09 5.75c-.62.3-1.19.66-1.71 1.06l-2.49-1c-.22-.08-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.65c-.04.32-.07.64-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.09.76 1.71 1.06l.36 3.25c.09.22.3.38.53.38h4c.23 0 .44-.16.53-.38l.36-3.25c.62-.3 1.19-.66 1.71-1.06l2.49 1c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zm-7.43-2.52c1.93 0 3.5-1.57 3.5-3.5s-1.57-3.5-3.5-3.5-3.5 1.57-3.5 3.5 1.57 3.5 3.5 3.5z"/>
+        </svg>
+    </button>
     <script src="extension_home.js"></script>
     <div class="footer">
         <p>Créé par <a href="https://github.com/quelquun667" target="_blank">quelquun667</a></p>

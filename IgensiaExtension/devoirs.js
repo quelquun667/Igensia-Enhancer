@@ -4,16 +4,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const devoirDescriptionInput = document.getElementById('devoir-description');
     const devoirDueDateInput = document.getElementById('devoir-due-date');
     const devoirList = document.getElementById('devoir-list');
+    const body = document.body; // Référence au body pour appliquer les thèmes
 
     let devoirs = [];
 
-    // Charger les devoirs depuis le stockage local
-    function loadDevoirs() {
+    // Fonction pour appliquer le thème
+    function applyTheme(theme) {
+        body.className = ''; // Réinitialiser toutes les classes de thème
+        if (theme !== 'default') {
+            body.classList.add(`theme-${theme}`);
+        }
+    }
+
+    // Charger les devoirs et le thème depuis le stockage local
+    function loadDevoirsAndTheme() {
         chrome.storage.local.get(['devoirs'], (result) => {
             if (result.devoirs) {
                 devoirs = result.devoirs;
                 renderDevoirs();
             }
+        });
+        chrome.storage.sync.get('selectedTheme', (data) => {
+            const savedTheme = data.selectedTheme || 'default';
+            applyTheme(savedTheme);
         });
     }
 
@@ -102,6 +115,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Charger les devoirs au démarrage
-    loadDevoirs();
+    // Écouter les messages de l'iframe parent pour le changement de thème
+    window.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'apply-theme') {
+            applyTheme(event.data.theme);
+        }
+    });
+
+    // Charger les devoirs et le thème au démarrage
+    loadDevoirsAndTheme();
 });
