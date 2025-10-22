@@ -71,29 +71,38 @@
                 const coeffElement = table.querySelector('tr:last-child td:nth-child(3)');
 
                 if (noteElement && coeffElement) {
-                    const noteText = noteElement.textContent.trim();
+                    const noteTextRaw = noteElement.textContent.trim();
+                    // Extraire uniquement la note brute (avant tout span/annotation)
+                    const noteText = noteTextRaw.split('\n')[0].trim();
                     const coefficient = parseFloat(coeffElement.textContent.trim());
 
                     const gpa = convertNoteToGPA(noteText);
 
-                    totalModules++;
-                    // Éviter d'ajouter le span si déjà présent
-                    if (!noteElement.querySelector('span')) {
-                        if (isModuleValidated(noteText)) {
-                            validatedModulesCount++;
-                            noteElement.innerHTML += ' <span style="color: green; font-weight: bold;">(Validé)</span>';
+                    // Si la note est '-' ou vide, considérer qu'elle n'est pas encore saisie : ne pas afficher 'Non validé' et ne pas compter
+                    const isEmptyNote = noteText === '' || noteText === '-';
+
+                    if (!isEmptyNote) {
+                        totalModules++;
+                        // Éviter d'ajouter le span si déjà présent
+                        if (!noteElement.querySelector('span')) {
+                            if (isModuleValidated(noteText)) {
+                                validatedModulesCount++;
+                                noteElement.innerHTML += ' <span style="color: green; font-weight: bold;">(Validé)</span>';
+                            } else {
+                                noteElement.innerHTML += ' <span style="color: red; font-weight: bold;">(Non validé)</span>';
+                            }
                         } else {
-                            noteElement.innerHTML += ' <span style="color: red; font-weight: bold;">(Non validé)</span>';
+                            if (isModuleValidated(noteText)) {
+                                validatedModulesCount++;
+                            }
+                        }
+
+                        if (gpa !== null && !isNaN(coefficient) && coefficient > 0) {
+                            totalGPA += gpa * coefficient;
+                            totalCoeff += coefficient;
                         }
                     } else {
-                        if (isModuleValidated(noteText)) {
-                            validatedModulesCount++;
-                        }
-                    }
-
-                    if (gpa !== null && !isNaN(coefficient) && coefficient > 0) {
-                        totalGPA += gpa * coefficient;
-                        totalCoeff += coefficient;
+                        // Si note vide, on ne fait rien (pas de label '(Non validé)')
                     }
                 }
             });
@@ -117,10 +126,6 @@
                 <div id="notesChartContainer" style="display: none; margin-top: 20px; padding: 15px; border-radius: 8px;">
                     <h3>Répartition des notes</h3>
                     <div id="notesChart" style="width: 100%; height: 200px; display: flex; align-items: flex-end; justify-content: space-around;"></div>
-                </div>
-                <div id="absencesContainer" style="margin-top: 10px; padding: 10px; border-radius: 8px;">
-                    <h3>Absences</h3>
-                    <p id="absencesSummary">Chargement des absences...</p>
                 </div>
             `;
 
@@ -203,8 +208,7 @@
             teacherSearchInput.addEventListener('input', filterTablesByTeacherOrEval);
             resetSearchButton.addEventListener('click', resetTableFilter);
 
-            // Lancer la récupération des absences (utile aussi sur la page notes)
-            fetchAndDisplayAbsences();
+            // Ne pas afficher ni récupérer les absences sur la page des notes.
 
             // Définir le bouton "Ordre Normal" comme actif par défaut
             setActiveButton(sortNormalButton);
@@ -233,7 +237,8 @@
             });
 
             // Calculer et afficher les totaux initiaux (depuis le document courant si possible)
-            fetchAndDisplayAbsences();
+            // (Cette page est la page d'absences donc on exécute le calcul)
+            fetchAndDisplayAbsences(document);
         } else {
             // Ni notes ni absences : ne pas injecter l'UI
             if (summaryDiv && summaryDiv.parentNode) {
