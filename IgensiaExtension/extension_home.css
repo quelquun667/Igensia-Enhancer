@@ -90,13 +90,14 @@ iframe {
 
 .settings-btn {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 20px; /* Ajuster la position pour qu'il ne soit pas collé au bord */
+    left: 20px; /* Placer à gauche pour éviter le chevauchement avec le bouton de fermeture */
     background: none;
     border: none;
     cursor: pointer;
     padding: 0;
     color: #260d66;
+    z-index: 101; /* Assurer qu'il est au-dessus du panneau de paramètres */
 }
 
 .settings-btn svg {
@@ -158,6 +159,18 @@ iframe {
     background-color: #260d66;
     color: white;
     border-color: #260d66;
+}
+
+.settings-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    width: 100%;
+    justify-content: center;
+}
+
+.settings-actions button {
+    flex: 1; /* Permettre aux boutons de prendre l'espace disponible */
 }
 
 /* Thèmes */
@@ -256,4 +269,16 @@ body.theme-light .theme-btn:hover {
     background-color: #260d66;
     color: white;
     border-color: #260d66;
+}
+
+.version-display {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    font-size: 10px;
+    color: #999;
+}
+
+body.theme-dark .version-display {
+    color: #bbb;
 }
