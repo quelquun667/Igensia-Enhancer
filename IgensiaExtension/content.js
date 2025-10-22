@@ -1,6 +1,8 @@
 (function() {
     console.log("Igensia Enhancer: Content script loaded.");
 
+    // Theme application was removed per user request: the popup will manage preview only.
+
     const noteMapping = {
         "A+": 4.0, "A": 4.0, "A-": 3.7,
         "B+": 3.3, "B": 3.0, "B-": 2.7,
@@ -10,6 +12,26 @@
     };
 
     const passingGrades = ["A+", "A", "A-", "B+", "B", "B-", "C+", "C"];
+
+    // Utility: wrap chrome.runtime.sendMessage in a Promise and check lastError to avoid uncaught "Extension context invalidated" errors
+    function safeSendMessage(message, timeoutMs = 5000) {
+        return new Promise((resolve, reject) => {
+            let finished = false;
+            try {
+                chrome.runtime.sendMessage(message, resp => {
+                    finished = true;
+                    if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+                    resolve(resp);
+                });
+            } catch (e) {
+                return reject(e);
+            }
+            // Timeout to avoid hanging indefinitely if the runtime doesn't respond
+            setTimeout(() => {
+                if (!finished) reject(new Error('No response from extension runtime'));
+            }, timeoutMs);
+        });
+    }
 
     function convertNoteToGPA(note) {
         return noteMapping[note.trim()] !== undefined ? noteMapping[note.trim()] : null;
@@ -260,14 +282,33 @@
         try {
             let useDoc = doc;
             if (!useDoc) {
-                const resp = await fetch(ABSENCES_URL, { credentials: 'include' });
-                if (!resp.ok) {
-                    absencesSummaryEl.textContent = `Erreur lors de la récupération des absences: ${resp.status}`;
-                    return;
+                try {
+                    const resp = await fetch(ABSENCES_URL, { credentials: 'include' });
+                    if (!resp.ok) {
+                        absencesSummaryEl.textContent = `Erreur lors de la récupération des absences: ${resp.status}`;
+                        return;
+                    }
+                    const text = await resp.text();
+                    const parser = new DOMParser();
+                    useDoc = parser.parseFromString(text, 'text/html');
+                } catch (fetchErr) {
+                    // Direct fetch failed (likely CORS or network). Try asking the background service worker to perform the request.
+                    console.warn('Direct fetch failed, attempting background fetch fallback:', fetchErr);
+                    try {
+                        const bgResp = await safeSendMessage({ action: 'fetchUrl', url: ABSENCES_URL });
+                        if (bgResp && bgResp.ok && bgResp.text) {
+                            const parser = new DOMParser();
+                            useDoc = parser.parseFromString(bgResp.text, 'text/html');
+                        } else {
+                            absencesSummaryEl.textContent = 'Impossible de récupérer les absences (erreur réseau).';
+                            return;
+                        }
+                    } catch (bgErr) {
+                        console.error('Background fetch failed:', bgErr);
+                        absencesSummaryEl.textContent = 'Impossible de récupérer les absences (erreur).';
+                        return;
+                    }
                 }
-                const text = await resp.text();
-                const parser = new DOMParser();
-                useDoc = parser.parseFromString(text, 'text/html');
             }
 
             // On prend les tables depuis useDoc mais si useDoc est le document courant, préférer les tables visibles
