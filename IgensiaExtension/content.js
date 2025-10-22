@@ -22,81 +22,84 @@
     let originalTablesOrder = []; // Pour stocker l'ordre original des tables
 
     function calculateAndDisplaySummary() {
-        const tables = document.querySelectorAll('.table-notes');
+        const noteTables = document.querySelectorAll('.table-notes');
+        const absTables = document.querySelectorAll('.table-absences');
+        const tables = noteTables;
         let totalGPA = 0;
         let totalCoeff = 0;
         let validatedModulesCount = 0;
         let totalModules = 0;
+        // Si on est sur une page de notes
+        const mainContainer = document.querySelector('.main-container');
+        if (!mainContainer) return;
 
-        // Réinitialiser originalTablesOrder si c'est la première fois ou si les tables ont changé
-        if (originalTablesOrder.length === 0 || originalTablesOrder.length !== tables.length) {
-            originalTablesOrder = Array.from(tables).map(table => {
-                const noteElement = table.querySelector('tr:last-child td:last-child');
-                const noteText = noteElement ? noteElement.textContent.trim() : '';
-                return { table, validated: isModuleValidated(noteText) };
-            });
+        let summaryDiv = document.querySelector('.igensia-enhancer-summary');
+        if (!summaryDiv) {
+            summaryDiv = document.createElement('div');
+            summaryDiv.className = 'igensia-enhancer-summary';
+            summaryDiv.style.marginTop = '20px';
+            summaryDiv.style.padding = '10px';
+            summaryDiv.style.border = '1px solid #ccc';
+            summaryDiv.style.borderRadius = '8px';
+            mainContainer.prepend(summaryDiv);
         }
 
-        tables.forEach(table => {
-            const noteElement = table.querySelector('tr:last-child td:last-child');
-            const coeffElement = table.querySelector('tr:last-child td:nth-child(3)');
+        // Ajuster les couleurs en fonction du mode sombre
+        if (document.body.classList.contains('dark-mode')) {
+            summaryDiv.style.backgroundColor = 'var(--dark-content-background-color)';
+            summaryDiv.style.color = 'var(--dark-color)';
+            summaryDiv.style.borderColor = '#434343';
+        } else {
+            summaryDiv.style.backgroundColor = '#f9f9f9';
+            summaryDiv.style.color = '#333';
+            summaryDiv.style.borderColor = '#ccc';
+        }
 
-            if (noteElement && coeffElement) {
-                const noteText = noteElement.textContent.trim();
-                const coefficient = parseFloat(coeffElement.textContent.trim());
+        if (noteTables && noteTables.length > 0) {
+            // Comportement original pour les notes
+            // Réinitialiser originalTablesOrder si c'est la première fois ou si les tables ont changé
+            if (originalTablesOrder.length === 0 || originalTablesOrder.length !== tables.length) {
+                originalTablesOrder = Array.from(tables).map(table => {
+                    const noteElement = table.querySelector('tr:last-child td:last-child');
+                    const noteText = noteElement ? noteElement.textContent.trim() : '';
+                    return { table, validated: isModuleValidated(noteText) };
+                });
+            }
 
-                const gpa = convertNoteToGPA(noteText);
+            tables.forEach(table => {
+                const noteElement = table.querySelector('tr:last-child td:last-child');
+                const coeffElement = table.querySelector('tr:last-child td:nth-child(3)');
 
-                totalModules++;
-                // Éviter d'ajouter le span si déjà présent
-                if (!noteElement.querySelector('span')) {
-                    if (isModuleValidated(noteText)) {
-                        validatedModulesCount++;
-                        noteElement.innerHTML += ' <span style="color: green; font-weight: bold;">(Validé)</span>';
+                if (noteElement && coeffElement) {
+                    const noteText = noteElement.textContent.trim();
+                    const coefficient = parseFloat(coeffElement.textContent.trim());
+
+                    const gpa = convertNoteToGPA(noteText);
+
+                    totalModules++;
+                    // Éviter d'ajouter le span si déjà présent
+                    if (!noteElement.querySelector('span')) {
+                        if (isModuleValidated(noteText)) {
+                            validatedModulesCount++;
+                            noteElement.innerHTML += ' <span style="color: green; font-weight: bold;">(Validé)</span>';
+                        } else {
+                            noteElement.innerHTML += ' <span style="color: red; font-weight: bold;">(Non validé)</span>';
+                        }
                     } else {
-                        noteElement.innerHTML += ' <span style="color: red; font-weight: bold;">(Non validé)</span>';
+                        if (isModuleValidated(noteText)) {
+                            validatedModulesCount++;
+                        }
                     }
-                } else {
-                    // Si le span est déjà là, juste mettre à jour le compteur
-                    if (isModuleValidated(noteText)) {
-                        validatedModulesCount++;
+
+                    if (gpa !== null && !isNaN(coefficient) && coefficient > 0) {
+                        totalGPA += gpa * coefficient;
+                        totalCoeff += coefficient;
                     }
                 }
+            });
 
-
-                if (gpa !== null && !isNaN(coefficient) && coefficient > 0) {
-                    totalGPA += gpa * coefficient;
-                    totalCoeff += coefficient;
-                }
-            }
-        });
-
-        const averageGPA = totalCoeff > 0 ? (totalGPA / totalCoeff).toFixed(2) : 'N/A';
-        const validatedPercentage = totalModules > 0 ? ((validatedModulesCount / totalModules) * 100).toFixed(2) : 'N/A';
-
-        const mainContainer = document.querySelector('.main-container');
-        if (mainContainer) {
-            let summaryDiv = document.querySelector('.igensia-enhancer-summary');
-            if (!summaryDiv) {
-                summaryDiv = document.createElement('div');
-                summaryDiv.className = 'igensia-enhancer-summary';
-                summaryDiv.style.marginTop = '20px';
-                summaryDiv.style.padding = '10px';
-                summaryDiv.style.border = '1px solid #ccc';
-                summaryDiv.style.borderRadius = '8px';
-                mainContainer.prepend(summaryDiv);
-            }
-
-            // Ajuster les couleurs en fonction du mode sombre
-            if (document.body.classList.contains('dark-mode')) {
-                summaryDiv.style.backgroundColor = 'var(--dark-content-background-color)';
-                summaryDiv.style.color = 'var(--dark-color)';
-                summaryDiv.style.borderColor = '#434343'; // Utiliser une couleur de bordure adaptée au mode sombre
-            } else {
-                summaryDiv.style.backgroundColor = '#f9f9f9';
-                summaryDiv.style.color = '#333';
-                summaryDiv.style.borderColor = '#ccc';
-            }
+            const averageGPA = totalCoeff > 0 ? (totalGPA / totalCoeff).toFixed(2) : 'N/A';
+            const validatedPercentage = totalModules > 0 ? ((validatedModulesCount / totalModules) * 100).toFixed(2) : 'N/A';
 
             summaryDiv.innerHTML = `
                 <p><strong>Moyenne pondérée (GPA) : ${averageGPA}</strong></p>
@@ -108,19 +111,22 @@
                     <button id="toggleChart" class="igensia-enhancer-button">Afficher Graphique</button>
                 </div>
                 <div id="search-container" style="margin-top: 10px; display: flex; gap: 5px;">
-                    <input type="text" id="teacherSearchInput" placeholder="Rechercher par formateur" style="flex-grow: 1; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                    <input type="text" id="teacherSearchInput" placeholder="Rechercher par formateur ou évaluation" style="flex-grow: 1; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
                     <button id="resetSearchButton" class="igensia-enhancer-button">Réinitialiser</button>
                 </div>
                 <div id="notesChartContainer" style="display: none; margin-top: 20px; padding: 15px; border-radius: 8px;">
                     <h3>Répartition des notes</h3>
                     <div id="notesChart" style="width: 100%; height: 200px; display: flex; align-items: flex-end; justify-content: space-around;"></div>
                 </div>
+                <div id="absencesContainer" style="margin-top: 10px; padding: 10px; border-radius: 8px;">
+                    <h3>Absences</h3>
+                    <p id="absencesSummary">Chargement des absences...</p>
+                </div>
             `;
 
-            // Appliquer les styles au conteneur du graphique
+            // Appliquer les styles et les gestionnaires uniquement pour la page de notes
             const notesChartContainer = document.getElementById('notesChartContainer');
             const teacherSearchInput = document.getElementById('teacherSearchInput');
-            const searchTeacherButton = document.getElementById('searchTeacherButton');
             const resetSearchButton = document.getElementById('resetSearchButton');
 
             if (document.body.classList.contains('dark-mode')) {
@@ -151,13 +157,12 @@
                 button.style.marginRight = '5px';
                 button.style.transition = 'background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease';
 
-                // Styles par défaut pour les boutons
                 if (document.body.classList.contains('dark-mode')) {
-                    button.style.backgroundColor = 'var(--secondary-color)'; // Bleu violet
+                    button.style.backgroundColor = 'var(--secondary-color)';
                     button.style.color = 'white';
                     button.style.borderColor = 'var(--secondary-color)';
                 } else {
-                    button.style.backgroundColor = 'var(--secondary-color)'; // Bleu violet
+                    button.style.backgroundColor = 'var(--secondary-color)';
                     button.style.color = 'white';
                     button.style.borderColor = 'var(--secondary-color)';
                 }
@@ -185,7 +190,6 @@
                 if (notesChartContainer.style.display === 'none') {
                     notesChartContainer.style.display = 'block';
                     toggleChartButton.textContent = 'Masquer Graphique';
-                    // Ajouter un petit délai pour s'assurer que le conteneur est visible et a une hauteur
                     setTimeout(() => {
                         console.log("Calling generateNotesChart after timeout.");
                         generateNotesChart();
@@ -196,30 +200,191 @@
                 }
             });
 
-            teacherSearchInput.addEventListener('input', filterTablesByTeacher); // Recherche en temps réel
+            teacherSearchInput.addEventListener('input', filterTablesByTeacherOrEval);
             resetSearchButton.addEventListener('click', resetTableFilter);
+
+            // Lancer la récupération des absences (utile aussi sur la page notes)
+            fetchAndDisplayAbsences();
 
             // Définir le bouton "Ordre Normal" comme actif par défaut
             setActiveButton(sortNormalButton);
+        } else if (absTables && absTables.length > 0) {
+            // Page d'absences: afficher uniquement le résumé des absences + recherche
+            summaryDiv.innerHTML = `
+                <div id="absencesContainer" style="margin-top: 10px; padding: 10px; border-radius: 8px;">
+                    <h3>Absences</h3>
+                    <div style="display:flex; gap:8px; margin-top:8px;">
+                        <input type="text" id="absenceSearchInput" placeholder="Rechercher par matière ou action" style="flex:1; padding:6px; border-radius:4px; border:1px solid #ccc;">
+                        <button id="resetAbsenceSearch" class="igensia-enhancer-button">Réinitialiser</button>
+                    </div>
+                    <p id="absencesSummary">Chargement des absences...</p>
+                </div>
+            `;
+
+            // Écouteurs pour la recherche
+            const absenceSearchInput = document.getElementById('absenceSearchInput');
+            const resetAbsenceSearch = document.getElementById('resetAbsenceSearch');
+            absenceSearchInput.addEventListener('input', () => {
+                filterAbsenceTables(absenceSearchInput.value.trim().toLowerCase());
+            });
+            resetAbsenceSearch.addEventListener('click', () => {
+                absenceSearchInput.value = '';
+                filterAbsenceTables('');
+            });
+
+            // Calculer et afficher les totaux initiaux (depuis le document courant si possible)
+            fetchAndDisplayAbsences();
+        } else {
+            // Ni notes ni absences : ne pas injecter l'UI
+            if (summaryDiv && summaryDiv.parentNode) {
+                summaryDiv.remove();
+            }
+        }
+        
+    }
+
+    // ----- Absences -----
+    // URL fournie par l'utilisateur (sera utilisée pour la requête)
+    const ABSENCES_URL = 'https://eabsences-igs.wigorservices.net/home/item?idinscription=370065&ismultiplepf=True';
+
+    // fetchAndDisplayAbsences now accepts an optional Document to compute totals from (useful when already on the absences page)
+    async function fetchAndDisplayAbsences(doc = null) {
+        const absencesSummaryEl = document.getElementById('absencesSummary');
+        if (!absencesSummaryEl) return;
+
+        try {
+            let useDoc = doc;
+            if (!useDoc) {
+                const resp = await fetch(ABSENCES_URL, { credentials: 'include' });
+                if (!resp.ok) {
+                    absencesSummaryEl.textContent = `Erreur lors de la récupération des absences: ${resp.status}`;
+                    return;
+                }
+                const text = await resp.text();
+                const parser = new DOMParser();
+                useDoc = parser.parseFromString(text, 'text/html');
+            }
+
+            // On prend les tables depuis useDoc mais si useDoc est le document courant, préférer les tables visibles
+            const tables = Array.from(useDoc.querySelectorAll('.table-absences'));
+            let totalJustifie = 0.0;
+            let totalInjustifie = 0.0;
+            let totalRetards = 0.0;
+
+            // Fonction utilitaire pour extraire un nombre d'une string (comme '3.50' ou '0,00')
+            const parseNum = s => {
+                if (!s) return 0;
+                const n = parseFloat(s.replace(',', '.').match(/[-0-9.,]+/)?.[0] || '0');
+                return isNaN(n) ? 0 : n;
+            };
+
+            tables.forEach(table => {
+                // Si on travaille sur le document courant (useDoc === document), filtrer les tables cachées
+                if (useDoc === document && table.style && table.style.display === 'none') return;
+
+                // Chercher la ligne de totaux: souvent la dernière tr avec des th colspan
+                const footerRow = Array.from(table.querySelectorAll('tr')).reverse().find(tr => tr.textContent && tr.textContent.toLowerCase().includes('total des absences'));
+                if (footerRow) {
+                    // Le footerRow peut contenir plusieurs lignes séparées par des <br>
+                    const lines = footerRow.innerText.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+                    lines.forEach(line => {
+                        const lower = line.toLowerCase();
+                        const num = parseNum(line);
+                        if (lower.includes('injust')) {
+                            totalInjustifie += num;
+                        } else if (lower.includes('absences justif') || (lower.includes('justif') && !lower.includes('injust'))) {
+                            totalJustifie += num;
+                        } else if (lower.includes('retard') || lower.includes('exclusion')) {
+                            totalRetards += num;
+                        }
+                    });
+                } else {
+                    // fallback: sommer la colonne Nb Heure des lignes de contenu (td)
+                    const rows = Array.from(table.querySelectorAll('tr'));
+                    rows.forEach(r => {
+                        const cells = r.querySelectorAll('td');
+                        if (!cells || cells.length < 2) return;
+                        // la colonne 'Nature' est généralement la 2ème colonne
+                        const nature = (cells[1].textContent || '').toLowerCase();
+                        // chercher la colonne Nb Heure — souvent la dernière
+                        const nbCell = cells[cells.length - 1];
+                        const h = parseNum(nbCell ? nbCell.textContent.trim() : '0');
+                        if (nature.includes('retard') || nature.includes('exclusion')) {
+                            totalRetards += h;
+                        } else if (nature.includes('absence')) {
+                            if (nature.includes('justif')) totalJustifie += h;
+                            else totalInjustifie += h; // si 'absence' mais pas 'justif', on considère non justifiée
+                        }
+                    });
+                }
+            });
+
+            // Si useDoc est document courant, on veut recalculer uniquement pour les tables visibles (après filtrage)
+            if (useDoc === document) {
+                // nothing extra — the Table filtering above already respected display
+            }
+
+            absencesSummaryEl.textContent = `Justifiées: ${totalJustifie.toFixed(2)} — Non justifiées: ${totalInjustifie.toFixed(2)} — Retards/Exclusions: ${totalRetards.toFixed(2)}`;
+        } catch (err) {
+            console.error('Erreur fetch absences:', err);
+            absencesSummaryEl.textContent = 'Impossible de récupérer les absences (erreur).';
         }
     }
 
-    function filterTablesByTeacher() {
+    // Filtre les tables d'absences sur la page courante et recalcule les totaux affichés
+    function filterAbsenceTables(query) {
+        const tables = Array.from(document.querySelectorAll('.table-absences'));
+        tables.forEach(table => {
+            let matchText = '';
+            // Chercher un .action-header juste avant la table (ou un parent) qui contient le nom du cours/action
+            let header = table.previousElementSibling;
+            while (header && header.nodeType === 1 && header.classList && !header.classList.contains('action-header')) {
+                header = header.previousElementSibling;
+            }
+            if (header && header.classList && header.classList.contains('action-header')) {
+                matchText = header.textContent.trim().toLowerCase();
+            } else {
+                // fallback: utiliser le texte de la table
+                matchText = table.textContent.trim().toLowerCase();
+            }
+
+            if (!query || matchText.includes(query)) {
+                table.style.display = '';
+            } else {
+                table.style.display = 'none';
+            }
+        });
+        // Recalculer les totaux à partir du document courant (tables visibles)
+        fetchAndDisplayAbsences(document);
+    }
+
+    function filterTablesByTeacherOrEval() {
         const searchTerm = document.getElementById('teacherSearchInput').value.toLowerCase();
         const notesContainer = document.querySelector('.text-center > div:last-child');
         if (!notesContainer) return;
 
         originalTablesOrder.forEach(item => {
-            const teacherElement = item.table.querySelector('th.col-4');
+            const teacherElement = item.table.querySelector('th.col-4'); // Nom du formateur
+            const evalNameElement = item.table.querySelector('th.col-5'); // Nom de l'évaluation (à vérifier si c'est le bon sélecteur)
+
+            let match = false;
             if (teacherElement) {
                 const teacherName = teacherElement.textContent.toLowerCase();
                 if (teacherName.includes(searchTerm)) {
-                    item.table.style.display = ''; // Afficher la table
-                } else {
-                    item.table.style.display = 'none'; // Masquer la table
+                    match = true;
                 }
+            }
+            if (!match && evalNameElement) { // Si pas de correspondance avec le formateur, vérifier le nom de l'évaluation
+                const evalName = evalNameElement.textContent.toLowerCase();
+                if (evalName.includes(searchTerm)) {
+                    match = true;
+                }
+            }
+
+            if (match) {
+                item.table.style.display = ''; // Afficher la table
             } else {
-                item.table.style.display = 'none'; // Masquer si pas de nom de formateur
+                item.table.style.display = 'none'; // Masquer la table
             }
         });
     }

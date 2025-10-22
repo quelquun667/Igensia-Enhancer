@@ -48,8 +48,17 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // Récupérer la version du manifest et l'afficher
+    const versionDisplay = document.getElementById('version-display');
+    if (versionDisplay) {
+        const manifest = chrome.runtime.getManifest();
+        versionDisplay.textContent = `v${manifest.version}`;
+    }
+
+    const backToHomeBtn = document.getElementById('back-to-home-btn');
+
     // Logique pour ouvrir/fermer le panneau de paramètres
-    if (settingsBtn && settingsPanel && closeSettingsBtn) {
+    if (settingsBtn && settingsPanel && closeSettingsBtn && backToHomeBtn) {
         settingsBtn.addEventListener('click', () => {
             homeView.style.display = 'none';
             devoirsIframe.style.display = 'none';
@@ -57,6 +66,11 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         closeSettingsBtn.addEventListener('click', () => {
+            settingsPanel.classList.remove('active');
+            homeView.style.display = 'flex'; // Revenir à la vue d'accueil
+        });
+
+        backToHomeBtn.addEventListener('click', () => {
             settingsPanel.classList.remove('active');
             homeView.style.display = 'flex'; // Revenir à la vue d'accueil
         });
