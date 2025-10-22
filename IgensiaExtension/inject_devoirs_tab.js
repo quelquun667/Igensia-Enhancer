@@ -22,15 +22,24 @@
             navbarRightActions.insertBefore(devoirsNavItem, globalSearchContainer);
 
             // Ajouter un écouteur d'événements pour ouvrir la popup
-            devoirsNavItem.addEventListener('click', () => {
+            devoirsNavItem.addEventListener('click', async () => {
                 // Envoyer un message au service worker pour ouvrir la popup
-                chrome.runtime.sendMessage({ action: "openDevoirsPopup" }, (response) => {
-                    if (chrome.runtime.lastError) {
-                        console.warn("Igensia Enhancer: Erreur lors de l'ouverture de la popup. Le service worker est peut-être inactif. Veuillez cliquer sur l'icône de l'extension dans la barre d'outils du navigateur.");
-                        // Optionnel: afficher une alerte temporaire à l'utilisateur
-                        // alert("La popup n'a pas pu s'ouvrir. Veuillez cliquer sur l'icône de l'extension.");
-                    }
-                });
+                try {
+                    await new Promise((resolve, reject) => {
+                        try {
+                            chrome.runtime.sendMessage({ action: "openDevoirsPopup" }, resp => {
+                                if (chrome.runtime.lastError) reject(new Error(chrome.runtime.lastError.message));
+                                else resolve(resp);
+                            });
+                        } catch (e) {
+                            reject(e);
+                        }
+                    });
+                } catch (err) {
+                    // The extension context might be inactive/terminated or the SW restarted.
+                    console.warn("Igensia Enhancer: Erreur lors de l'ouverture de la popup (contexte extension invalide). Veuillez cliquer sur l'icône de l'extension dans la barre d'outils du navigateur.", err);
+                    // Optionally show a small UI hint instead of alert
+                }
             });
 
             console.log("Igensia Enhancer: 'Mes Devoirs' tab injected.");

@@ -16,7 +16,7 @@
     },
     {
       "matches": ["https://moncampus.igensia-education.fr/*"],
-      "js": ["inject_devoirs_tab.js"],
+      "js": ["inject_devoirs_tab.js", "content.js"],
       "run_at": "document_idle"
     },
     {

@@ -10,9 +10,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Fonction pour appliquer le thème
     function applyTheme(theme) {
-        body.className = ''; // Réinitialiser toutes les classes de thème
-        if (theme !== 'default') {
-            body.classList.add(`theme-${theme}`);
+        // Remove existing theme classes, then add explicit theme class
+        body.classList.remove('theme-dark', 'theme-light');
+        if (theme === 'default' || theme === 'light') {
+            body.classList.add('theme-light');
+        } else if (theme === 'dark') {
+            body.classList.add('theme-dark');
         }
 
         // Mettre à jour l'état actif des boutons de thème
@@ -55,10 +58,8 @@ document.addEventListener('DOMContentLoaded', () => {
         versionDisplay.textContent = `v${manifest.version}`;
     }
 
-    const backToHomeBtn = document.getElementById('back-to-home-btn');
-
     // Logique pour ouvrir/fermer le panneau de paramètres
-    if (settingsBtn && settingsPanel && closeSettingsBtn && backToHomeBtn) {
+    if (settingsBtn && settingsPanel && closeSettingsBtn) {
         settingsBtn.addEventListener('click', () => {
             homeView.style.display = 'none';
             devoirsIframe.style.display = 'none';
@@ -66,11 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         closeSettingsBtn.addEventListener('click', () => {
-            settingsPanel.classList.remove('active');
-            homeView.style.display = 'flex'; // Revenir à la vue d'accueil
-        });
-
-        backToHomeBtn.addEventListener('click', () => {
             settingsPanel.classList.remove('active');
             homeView.style.display = 'flex'; // Revenir à la vue d'accueil
         });

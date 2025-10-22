@@ -4,8 +4,10 @@ body {
     padding: 0; /* Supprimer le padding du body pour laisser le container gérer */
     background-color: #f4f4f4;
     color: #333;
-    width: 340px; /* Largeur de la popup ajustée pour le contenu de l'iframe (300px + 2*20px padding) */
-    min-height: 200px; /* Hauteur minimale pour la popup */
+    max-width: 420px; /* Limiter la largeur maximale du popup */
+    min-width: 360px; /* Forcer une largeur minimale pour éviter l'affichage trop étroit */
+    width: 100%;
+    min-height: 300px; /* Hauteur minimale pour la popup */
     text-align: center;
     display: flex; /* Utiliser flexbox pour centrer le contenu */
     flex-direction: column;
@@ -144,14 +146,17 @@ iframe {
 }
 
 .theme-btn {
-    margin: 5px;
-    padding: 8px 15px;
-    border-radius: 5px;
+    display: block;
+    margin: 10px auto;
+    padding: 14px 20px;
+    border-radius: 10px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 17px;
     background-color: #eee;
     color: #333;
     border: 1px solid #ccc;
+    width: 100%;
+    max-width: 360px; /* Keep a sensible max so it doesn't stretch too wide */
 }
 
 .theme-btn.active,
@@ -177,6 +182,21 @@ iframe {
 body.theme-dark {
     background-color: #333;
     color: #f4f4f4;
+}
+
+/* Stronger dark rules for popup-specific elements */
+body.theme-dark .container,
+body.theme-dark .settings-card {
+    background-color: #222 !important;
+    color: #eaeaea !important;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5) !important;
+}
+
+body.theme-dark .theme-btn,
+body.theme-dark button {
+    background-color: #3a2b55 !important;
+    color: #fff !important;
+    border-color: #5a3f87 !important;
 }
 
 body.theme-dark .container {
@@ -281,4 +301,24 @@ body.theme-light .theme-btn:hover {
 
 body.theme-dark .version-display {
     color: #bbb;
+}
+
+/* Card that holds settings content centered in the modal */
+.settings-card {
+    width: 100%;
+    max-width: 360px;
+    background: white;
+    border-radius: 10px;
+    padding: 18px 20px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+    text-align: center;
+}
+
+.settings-card h2 {
+    margin-top: 0;
+    color: #260d66;
+}
+
+.theme-selection h3 {
+    margin-bottom: 12px;
 }
