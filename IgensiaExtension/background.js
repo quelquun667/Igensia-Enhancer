@@ -19,6 +19,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         // Indicate we'll send response asynchronously
         return true;
     }
+    // Allow popup to request a remote manifest check now
+    if (request.action === 'run_check_remote_manifest') {
+        (async () => {
+            const res = await checkRemoteManifest();
+            sendResponse(res);
+        })();
+        return true; // will respond asynchronously
+    }
 });
 
 // -------------------------
@@ -27,7 +35,8 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 const GITHUB_API_RELEASES = 'https://api.github.com/repos/quelquun667/Igensia-Extension/releases/latest';
 const STORAGE_KEY = 'igs_last_release';
 
-const RAW_MANIFEST_URL = 'https://raw.githubusercontent.com/quelquun667/Igensia-Extension/main/manifest.json';
+// Correct raw URL for the manifest inside the repository path as provided by the user
+const RAW_MANIFEST_URL = 'https://raw.githubusercontent.com/quelquun667/Igensia-Extension/refs/heads/main/IgensiaExtension/manifest.json';
 const STORAGE_MANIFEST_KEY = 'igs_remote_manifest_version';
 
 async function checkForGithubRelease() {
@@ -116,15 +125,15 @@ async function checkRemoteManifest() {
     try {
         const localVersion = chrome.runtime.getManifest().version;
         const resp = await fetch(RAW_MANIFEST_URL);
-        if (!resp.ok) return;
+        if (!resp.ok) {
+            console.warn('checkRemoteManifest: failed to fetch remote manifest', resp.status, resp.statusText, RAW_MANIFEST_URL);
+            return { ok: false, reason: 'fetch_failed', status: resp.status, statusText: resp.statusText };
+        }
         const text = await resp.text();
         let remote;
         try { remote = JSON.parse(text); } catch (e) { return; }
         const remoteVersion = remote.version;
         if (!remoteVersion) return;
-
-        const stored = await new Promise(resolve => chrome.storage.local.get([STORAGE_MANIFEST_KEY], res => resolve(res)));
-        const lastNotified = stored[STORAGE_MANIFEST_KEY] || null;
 
         // Simple semver-ish compare by splitting on dots
         const isRemoteNewer = (local, remote) => {
@@ -137,8 +146,7 @@ async function checkRemoteManifest() {
             }
             return false;
         };
-
-        if (isRemoteNewer(localVersion, remoteVersion) && remoteVersion !== lastNotified) {
+        if (isRemoteNewer(localVersion, remoteVersion)) {
             chrome.notifications.create('igs_manifest_update', {
                 type: 'basic',
                 iconUrl: 'icons/icon128.png',
@@ -146,11 +154,13 @@ async function checkRemoteManifest() {
                 message: `La version distante ${remoteVersion} est disponible (locale ${localVersion}).`,
                 priority: 2
             });
-            const obj = {};
-            obj[STORAGE_MANIFEST_KEY] = remoteVersion;
-            chrome.storage.local.set(obj);
+            console.info('checkRemoteManifest: remote version newer', { localVersion, remoteVersion });
+            return { ok: true, updated: true, localVersion, remoteVersion };
         }
+        console.info('checkRemoteManifest: no update', { localVersion, remoteVersion });
+        return { ok: true, updated: false, localVersion, remoteVersion };
     } catch (err) {
         console.error('Error checking remote manifest:', err);
+        return { ok: false, reason: 'exception', error: String(err) };
     }
 }

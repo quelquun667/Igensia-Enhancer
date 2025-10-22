@@ -13,6 +13,7 @@
             <p>Bienvenue sur votre extension personnalisée pour MonCampus Igensia.</p>
             <div class="button-group">
                 <button id="show-devoirs-btn">Mes Devoirs</button>
+                <button id="check-update-btn">Vérifier mise à jour</button>
                 <!-- D'autres boutons pour de futures fonctionnalités pourraient être ajoutés ici -->
             </div>
         </div>
@@ -43,6 +44,11 @@
     <div class="footer">
         <p>Créé par <a href="https://github.com/quelquun667" target="_blank">quelquun667</a></p>
         <span id="version-display" class="version-display"></span>
+    </div>
+    <div id="update-banner" style="display:none; position:fixed; left:12px; right:12px; bottom:60px; background:#fff3cd; color:#856404; border:1px solid #ffeeba; padding:10px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+        <span id="update-banner-text"></span>
+        <button id="update-open-btn" style="margin-left:10px;">Voir</button>
+        <button id="update-dismiss-btn" style="margin-left:6px;">Ignorer</button>
     </div>
 </body>
 </html>
