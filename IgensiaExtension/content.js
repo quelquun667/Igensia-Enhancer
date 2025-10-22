@@ -350,8 +350,10 @@
 
             if (!query || matchText.includes(query)) {
                 table.style.display = '';
+                if (header) header.style.display = '';
             } else {
                 table.style.display = 'none';
+                if (header) header.style.display = 'none';
             }
         });
         // Recalculer les totaux à partir du document courant (tables visibles)
