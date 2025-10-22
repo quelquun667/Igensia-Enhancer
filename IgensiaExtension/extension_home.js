@@ -58,6 +58,67 @@ document.addEventListener('DOMContentLoaded', () => {
         versionDisplay.textContent = `v${manifest.version}`;
     }
 
+    // Safe sendMessage helper for popup (checks lastError)
+    function popupSendMessage(message, timeoutMs = 5000) {
+        return new Promise((resolve, reject) => {
+            let finished = false;
+            try {
+                chrome.runtime.sendMessage(message, resp => {
+                    finished = true;
+                    if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+                    resolve(resp);
+                });
+            } catch (e) { return reject(e); }
+            setTimeout(() => { if (!finished) reject(new Error('No response from runtime')); }, timeoutMs);
+        });
+    }
+
+    // Update UI: banner
+    const checkUpdateBtn = document.getElementById('check-update-btn');
+    const updateBanner = document.getElementById('update-banner');
+    const updateBannerText = document.getElementById('update-banner-text');
+    const updateOpenBtn = document.getElementById('update-open-btn');
+    const updateDismissBtn = document.getElementById('update-dismiss-btn');
+
+    async function showUpdateIfAny(result) {
+        if (!result || !result.ok) return;
+        if (result.updated) {
+            updateBannerText.textContent = `Nouvelle version disponible : ${result.remoteVersion} (locale ${result.localVersion})`;
+            updateBanner.style.display = 'block';
+        } else {
+            // optionally show a brief confirmation
+            updateBannerText.textContent = `Aucune mise à jour (v${result.localVersion})`;
+            updateOpenBtn.style.display = 'none';
+            setTimeout(() => { updateBanner.style.display = 'none'; updateOpenBtn.style.display = ''; }, 2000);
+        }
+    }
+
+    if (checkUpdateBtn) {
+        checkUpdateBtn.addEventListener('click', async () => {
+            checkUpdateBtn.disabled = true;
+            try {
+                const resp = await popupSendMessage({ action: 'run_check_remote_manifest' }, 8000);
+                console.log('Popup got checkRemoteManifest response', resp);
+                await showUpdateIfAny(resp);
+            } catch (err) {
+                console.error('Error asking background for update check', err);
+            } finally {
+                checkUpdateBtn.disabled = false;
+            }
+        });
+    }
+
+    if (updateOpenBtn) {
+        updateOpenBtn.addEventListener('click', () => {
+            chrome.tabs.create({ url: 'https://github.com/quelquun667/Igensia-Extension' });
+        });
+    }
+    if (updateDismissBtn) {
+        updateDismissBtn.addEventListener('click', () => {
+            updateBanner.style.display = 'none';
+        });
+    }
+
     // Logique pour ouvrir/fermer le panneau de paramètres
     if (settingsBtn && settingsPanel && closeSettingsBtn) {
         settingsBtn.addEventListener('click', () => {
