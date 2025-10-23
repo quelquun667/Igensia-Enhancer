@@ -24,6 +24,7 @@ body {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     display: flex;
     flex-direction: column;
+    position: relative; /* assure l’ancrage du bouton */
 }
 
 #home-view {
@@ -36,13 +37,14 @@ body {
 
 h1 {
     color: #260d66; /* Couleur primaire d'Igensia */
-    margin-bottom: 10px;
+    margin: 6px 0 8px 0;
+    font-size: 20px;
 }
 
 p {
     font-size: 14px;
     color: #555;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
 }
 
 .button-group {
@@ -90,22 +92,54 @@ iframe {
     text-decoration: underline;
 }
 
+/* Bouton paramètres (plus grand et contrasté) */
 .settings-btn {
-    position: absolute;
-    top: 20px; /* Ajuster la position pour qu'il ne soit pas collé au bord */
-    left: 20px; /* Placer à gauche pour éviter le chevauchement avec le bouton de fermeture */
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 0;
-    color: #260d66;
-    z-index: 101; /* Assurer qu'il est au-dessus du panneau de paramètres */
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: #4b2c82;         /* fond violet */
+  color: #ffffff;               /* icône blanche */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.22);
+  cursor: pointer;
+  z-index: 10;
+  transition: background .2s ease, transform .15s ease, box-shadow .2s ease;
 }
 
+.settings-btn:hover {
+  background: #5b3a9a;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0,0,0,0.28);
+}
+
+/* Taille de l’icône */
 .settings-btn svg {
-    width: 24px;
-    height: 24px;
-    display: block;
+  width: 22px;
+  height: 22px;
+}
+
+/* Badge notification sur l’engrenage */
+#settings-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 18px;
+  height: 18px;
+  font-size: 12px;
+  line-height: 18px;
+  border-radius: 50%;
+  background: #e53935;
+  color: #fff;
+  display: none;                /* sera passé à flex/inline-flex côté JS */
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 0 2px #fff;   /* petit anneau blanc pour la lisibilité */
 }
 
 .settings-panel {

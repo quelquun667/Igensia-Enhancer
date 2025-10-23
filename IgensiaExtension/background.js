@@ -27,6 +27,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         })();
         return true; // will respond asynchronously
     }
+    if (request.action === 'clear_update_flag') {
+        chrome.storage.local.set({ igs_update_available: false }, () => sendResponse({ ok: true }));
+        return true;
+    }
+    if (request.action === 'get_update_flag') {
+        chrome.storage.local.get(['igs_update_available'], res => sendResponse({ ok: true, value: !!res.igs_update_available }));
+        return true;
+    }
 });
 
 // -------------------------
@@ -155,6 +163,8 @@ async function checkRemoteManifest() {
                 priority: 2
             });
             console.info('checkRemoteManifest: remote version newer', { localVersion, remoteVersion });
+            // set an availability flag for the popup badge
+            chrome.storage.local.set({ igs_update_available: true });
             return { ok: true, updated: true, localVersion, remoteVersion };
         }
         console.info('checkRemoteManifest: no update', { localVersion, remoteVersion });

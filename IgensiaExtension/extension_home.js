@@ -79,6 +79,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateBannerText = document.getElementById('update-banner-text');
     const updateOpenBtn = document.getElementById('update-open-btn');
     const updateDismissBtn = document.getElementById('update-dismiss-btn');
+    const settingsBadge = document.getElementById('settings-badge');
+    const settingsCheckUpdateBtn = document.getElementById('settings-check-update-btn');
+    const settingsUpdateActions = document.getElementById('settings-update-actions');
+    const settingsUpdateText = document.getElementById('settings-update-text');
+    const settingsSeeUpdateBtn = document.getElementById('settings-see-update-btn');
+    const settingsDismissUpdateBtn = document.getElementById('settings-dismiss-update-btn');
 
     async function showUpdateIfAny(result) {
         if (!result || !result.ok) return;
@@ -108,6 +114,42 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // settings panel check button
+    if (settingsCheckUpdateBtn) {
+        settingsCheckUpdateBtn.addEventListener('click', async () => {
+            settingsCheckUpdateBtn.disabled = true;
+            try {
+                const resp = await popupSendMessage({ action: 'run_check_remote_manifest' }, 8000);
+                console.log('Settings got checkRemoteManifest response', resp);
+                if (resp && resp.ok && resp.updated) {
+                    if (settingsBadge) settingsBadge.style.display = 'flex';
+                    // show actions in settings panel
+                    if (settingsUpdateActions) settingsUpdateActions.style.display = 'block';
+                    if (settingsUpdateText) settingsUpdateText.textContent = `Nouvelle version disponible : ${resp.remoteVersion} (locale ${resp.localVersion})`;
+                    settingsCheckUpdateBtn.style.display = 'none';
+                } else {
+                    // show a short confirmation inside settings
+                    if (settingsUpdateActions) {
+                        settingsUpdateText.textContent = `Aucune mise à jour (v${resp && resp.localVersion ? resp.localVersion : chrome.runtime.getManifest().version})`;
+                        settingsUpdateActions.style.display = 'block';
+                        // Hide actions buttons for this case
+                        if (settingsSeeUpdateBtn) settingsSeeUpdateBtn.style.display = 'none';
+                        if (settingsDismissUpdateBtn) settingsDismissUpdateBtn.style.display = 'none';
+                        setTimeout(() => {
+                            if (settingsUpdateActions) settingsUpdateActions.style.display = 'none';
+                            if (settingsSeeUpdateBtn) settingsSeeUpdateBtn.style.display = '';
+                            if (settingsDismissUpdateBtn) settingsDismissUpdateBtn.style.display = '';
+                        }, 1500);
+                    }
+                }
+            } catch (err) {
+                console.error('Error asking background for update check', err);
+            } finally {
+                settingsCheckUpdateBtn.disabled = false;
+            }
+        });
+    }
+
     if (updateOpenBtn) {
         updateOpenBtn.addEventListener('click', () => {
             chrome.tabs.create({ url: 'https://github.com/quelquun667/Igensia-Extension' });
@@ -125,6 +167,20 @@ document.addEventListener('DOMContentLoaded', () => {
             homeView.style.display = 'none';
             devoirsIframe.style.display = 'none';
             settingsPanel.classList.add('active');
+            // When opening settings, if a flag is set, display actions as if we pressed the check.
+            popupSendMessage({ action: 'get_update_flag' }).then(resp => {
+                if (resp && resp.ok && resp.value) {
+                    // We can run the check to get version info and show actions
+                    return popupSendMessage({ action: 'run_check_remote_manifest' }, 8000).then(r => {
+                        if (r && r.ok && r.updated) {
+                            if (settingsBadge) settingsBadge.style.display = 'flex';
+                            if (settingsUpdateActions) settingsUpdateActions.style.display = 'block';
+                            if (settingsUpdateText) settingsUpdateText.textContent = `Nouvelle version disponible : ${r.remoteVersion} (locale ${r.localVersion})`;
+                            if (settingsCheckUpdateBtn) settingsCheckUpdateBtn.style.display = 'none';
+                        }
+                    });
+                }
+            }).catch(() => {});
         });
 
         closeSettingsBtn.addEventListener('click', () => {
@@ -132,6 +188,37 @@ document.addEventListener('DOMContentLoaded', () => {
             homeView.style.display = 'flex'; // Revenir à la vue d'accueil
         });
     }
+
+    // Settings actions: see/dismiss
+    if (settingsSeeUpdateBtn) {
+        settingsSeeUpdateBtn.addEventListener('click', async () => {
+            try {
+                await popupSendMessage({ action: 'clear_update_flag' });
+                if (settingsBadge) settingsBadge.style.display = 'none';
+            } catch(e) {}
+            chrome.tabs.create({ url: 'https://github.com/quelquun667/Igensia-Extension' });
+        });
+    }
+    if (settingsDismissUpdateBtn) {
+        settingsDismissUpdateBtn.addEventListener('click', async () => {
+            try {
+                await popupSendMessage({ action: 'clear_update_flag' });
+                if (settingsBadge) settingsBadge.style.display = 'none';
+            } catch(e) {}
+            if (settingsUpdateActions) settingsUpdateActions.style.display = 'none';
+            if (settingsCheckUpdateBtn) settingsCheckUpdateBtn.style.display = '';
+        });
+    }
+
+    // On popup load, check if background reported an update and show badge
+    (async () => {
+        try {
+            const resp = await popupSendMessage({ action: 'get_update_flag' });
+            if (resp && resp.ok && resp.value) {
+                if (settingsBadge) settingsBadge.style.display = 'flex';
+            }
+        } catch(e) { }
+    })();
 
     // Logique pour changer de thème
     themeButtons.forEach(button => {
