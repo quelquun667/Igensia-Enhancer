@@ -495,11 +495,16 @@
                 }
 
                 console.log(`Raw note text: '${rawNoteText}', Extracted note for mapping: '${noteTextForMapping}'`); // Debug log
+                // Ignorer les notes vides ou '-' (non saisies)
+                const normalized = noteTextForMapping.trim();
+                if (!normalized || normalized === '-') {
+                    return; // ne pas compter ni logguer
+                }
                 // Vérifier si la note est dans noteMapping avant de l'ajouter
-                if (noteMapping.hasOwnProperty(noteTextForMapping)) {
-                    noteCounts[noteTextForMapping] = (noteCounts[noteTextForMapping] || 0) + 1;
+                if (noteMapping.hasOwnProperty(normalized)) {
+                    noteCounts[normalized] = (noteCounts[normalized] || 0) + 1;
                 } else {
-                    console.warn(`Note '${noteTextForMapping}' not found in noteMapping.`);
+                    console.warn(`Note '${normalized}' not found in noteMapping.`);
                 }
             }
         });
