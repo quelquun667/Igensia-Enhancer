@@ -3,9 +3,55 @@
 
 Ce dépôt contient l'extension de navigateur "Igensia" (dossier `IgensiaExtension`).
 
+## Démo rapide
+
+<p align="center">
+	<img src="img/devoirs-demo.png" alt="Popup Mes Devoirs" width="30%" />
+	<img src="img/notes-demo.png" alt="Tableau des notes et graphiques" width="30%" />
+	<img src="img/absences-demo.png" alt="Résumé des absences" width="30%" />
+	<br/>
+	<em>De gauche à droite : Mes Devoirs • Répartition des notes • Résumé des absences</em>
+	<br/>
+	<sub>Astuce : placez vos captures dans <code>docs/</code> avec ces noms de fichiers pour qu'elles s'affichent ici.</sub>
+  
+</p>
+
 ## Objectif
 
 Ce README explique comment télécharger le projet et l'importer dans un navigateur (Chrome/Edge et Firefox) pour le tester en mode développement.
+
+## Fonctionnalités
+
+- Mes Devoirs (dans le popup)
+	- Ajouter, modifier, terminer et supprimer des devoirs
+	- Date d’échéance et affichage clair
+	- Thème clair/sombre synchronisé avec le reste de l’extension
+
+- Notes (pages MonCampus/Wigor)
+	- Calcul automatique de la moyenne pondérée (GPA) et du pourcentage de modules validés
+	- Tri rapide par « Validés », « Non Validés » ou « Ordre normal »
+	- Recherche par formateur ou évaluation
+	- Graphique de répartition des notes (afficher/masquer)
+
+- Absences
+	- Récapitulatif des heures: Justifiées, Non justifiées, Retards/Exclusions
+	- Recherche/filtre par matière ou action
+	- Récupération résiliente via le service worker (fallback en cas d’erreurs réseau/CORS)
+
+- Mises à jour
+	- Vérification automatique toutes les 6h via le manifest distant (GitHub)
+	- Badge sur le bouton « Paramètres » quand une nouvelle version est disponible
+	- Actions dans les paramètres: « Voir » (ouvrir GitHub) ou « Ignorer » (retirer le badge)
+
+- Paramètres et thème
+	- Thème clair/sombre, mémorisé entre les sessions
+
+- Intégration MonCampus
+	- Insertion d’un bouton/onglet « Mes Devoirs » pour ouvrir rapidement le popup
+
+- Vie privée
+	- Données stockées localement dans le navigateur; aucune télémétrie
+	- Permissions limitées aux domaines MonCampus/Wigor et à raw.githubusercontent.com (pour la vérification de mise à jour)
 
 ## Prérequis
 

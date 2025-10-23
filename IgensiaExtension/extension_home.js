@@ -229,3 +229,62 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 });
+
+function setSettingsBadge(visible) {
+  const badge = document.getElementById('settings-badge');
+  if (!badge) return;
+  badge.style.display = visible ? 'inline-flex' : 'none';
+}
+
+async function getFlag() {
+  return new Promise(res => {
+    chrome.runtime.sendMessage({ action: 'get_update_flag' }, r => res(!!(r && r.value)));
+  });
+}
+async function clearFlag() {
+  return new Promise(res => {
+    chrome.runtime.sendMessage({ action: 'clear_update_flag' }, () => res());
+  });
+}
+async function runCheck() {
+  return new Promise(res => {
+    chrome.runtime.sendMessage({ action: 'run_check_remote_manifest' }, r => res(r));
+  });
+}
+
+// Au chargement du popup, synchroniser le badge avec le flag
+document.addEventListener('DOMContentLoaded', async () => {
+  const hasFlag = await getFlag();
+  setSettingsBadge(hasFlag);
+
+  // Option: si un badge traîne, re-check silencieux pour l’auto-nettoyer
+  if (hasFlag) {
+    const r = await runCheck();
+    if (r && r.ok && !r.updated) {
+      await clearFlag();
+      setSettingsBadge(false);
+    }
+  }
+});
+
+// Quand on clique "Vérifier mise à jour" dans les paramètres
+async function onCheckUpdateFromSettings() {
+  settingsCheckUpdateBtn.disabled = true;
+  const r = await runCheck();
+
+  if (r && r.ok && r.updated) {
+    // montrer les actions Voir/Ignorer dans les paramètres
+    if (settingsBadge) settingsBadge.style.display = 'flex';
+    if (settingsUpdateActions) settingsUpdateActions.style.display = 'block';
+    if (settingsUpdateText) settingsUpdateText.textContent = `Nouvelle version disponible : ${r.remoteVersion} (locale ${r.localVersion})`;
+    settingsCheckUpdateBtn.style.display = 'none';
+  } else {
+    // pas d’update: effacer badge/flag et remettre le bouton
+    await clearFlag();
+    setSettingsBadge(false);
+    // masquer le bloc d'actions s'il était visible, réafficher le bouton
+    if (settingsUpdateActions) settingsUpdateActions.style.display = 'none';
+    if (settingsCheckUpdateBtn) settingsCheckUpdateBtn.style.display = '';
+  }
+}
+// Assure-toi que le bouton appelle bien onCheckUpdateFromSettings
