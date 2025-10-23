@@ -12,8 +12,6 @@ Ce dépôt contient l'extension de navigateur "Igensia" (dossier `IgensiaExtensi
 	<br/>
 	<em>De gauche à droite : Mes Devoirs • Répartition des notes • Résumé des absences</em>
 	<br/>
-	<sub>Astuce : placez vos captures dans <code>docs/</code> avec ces noms de fichiers pour qu'elles s'affichent ici.</sub>
-  
 </p>
 
 ## Objectif
