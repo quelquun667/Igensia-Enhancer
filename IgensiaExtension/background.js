@@ -128,49 +128,52 @@ chrome.notifications.onClicked.addListener(id => {
     }
 });
 
+async function setUpdateFlag(value) {
+  await chrome.storage.local.set({ igs_update_available: !!value });
+}
+
+// Compare two dotted version strings (e.g., '2.1.0' vs '2.0.5').
+// Returns true if remote > local, else false.
+function isVersionNewer(remote, local) {
+    const pa = String(remote || '').split('.').map(n => parseInt(n, 10) || 0);
+    const pb = String(local || '').split('.').map(n => parseInt(n, 10) || 0);
+    const len = Math.max(pa.length, pb.length);
+    for (let i = 0; i < len; i++) {
+        const a = pa[i] || 0;
+        const b = pb[i] || 0;
+        if (a > b) return true;
+        if (a < b) return false;
+    }
+    return false;
+}
+
 // Check raw manifest.json on GitHub and compare version
 async function checkRemoteManifest() {
-    try {
-        const localVersion = chrome.runtime.getManifest().version;
-        const resp = await fetch(RAW_MANIFEST_URL);
-        if (!resp.ok) {
-            console.warn('checkRemoteManifest: failed to fetch remote manifest', resp.status, resp.statusText, RAW_MANIFEST_URL);
-            return { ok: false, reason: 'fetch_failed', status: resp.status, statusText: resp.statusText };
-        }
-        const text = await resp.text();
-        let remote;
-        try { remote = JSON.parse(text); } catch (e) { return; }
-        const remoteVersion = remote.version;
-        if (!remoteVersion) return;
-
-        // Simple semver-ish compare by splitting on dots
-        const isRemoteNewer = (local, remote) => {
-            const a = local.split('.').map(n => parseInt(n)||0);
-            const b = remote.split('.').map(n => parseInt(n)||0);
-            for (let i=0;i<Math.max(a.length,b.length);i++){
-                const ai=a[i]||0, bi=b[i]||0;
-                if (bi>ai) return true;
-                if (bi<ai) return false;
-            }
-            return false;
-        };
-        if (isRemoteNewer(localVersion, remoteVersion)) {
-            chrome.notifications.create('igs_manifest_update', {
-                type: 'basic',
-                iconUrl: 'icons/icon128.png',
-                title: 'Igensia Extension: nouvelle version détectée',
-                message: `La version distante ${remoteVersion} est disponible (locale ${localVersion}).`,
-                priority: 2
-            });
-            console.info('checkRemoteManifest: remote version newer', { localVersion, remoteVersion });
-            // set an availability flag for the popup badge
-            chrome.storage.local.set({ igs_update_available: true });
-            return { ok: true, updated: true, localVersion, remoteVersion };
-        }
-        console.info('checkRemoteManifest: no update', { localVersion, remoteVersion });
-        return { ok: true, updated: false, localVersion, remoteVersion };
-    } catch (err) {
-        console.error('Error checking remote manifest:', err);
-        return { ok: false, reason: 'exception', error: String(err) };
+  try {
+    const localVersion = chrome.runtime.getManifest().version;
+    const resp = await fetch(RAW_MANIFEST_URL, { cache: 'no-store' });
+    if (!resp.ok) {
+      console.warn('Remote manifest fetch failed', resp.status, resp.statusText);
+      await setUpdateFlag(false); // évite badge bloqué
+      return { ok: false, reason: 'fetch_failed', status: resp.status, statusText: resp.statusText };
     }
+    const remote = await resp.json();
+    const remoteVersion = String(remote.version || '').trim();
+
+    const newer = isVersionNewer(remoteVersion, localVersion); // votre comparer existant
+    await setUpdateFlag(newer); // <-- clé: true si update, false sinon
+
+    if (newer) {
+      // Optionnel: garder votre notification système si souhaitée
+      // createNotification(remoteVersion);
+      console.info('checkRemoteManifest: update available', { localVersion, remoteVersion });
+      return { ok: true, updated: true, localVersion, remoteVersion };
+    }
+    console.info('checkRemoteManifest: no update', { localVersion, remoteVersion });
+    return { ok: true, updated: false, localVersion, remoteVersion };
+  } catch (e) {
+    console.warn('checkRemoteManifest exception', e);
+    await setUpdateFlag(false);
+    return { ok: false, reason: 'exception', error: String(e) };
+  }
 }
