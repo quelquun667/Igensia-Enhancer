@@ -144,6 +144,10 @@
                 <div id="search-container" style="margin-top: 10px; display: flex; gap: 5px;">
                     <input type="text" id="teacherSearchInput" placeholder="Rechercher par formateur ou évaluation" style="flex-grow: 1; padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
                     <button id="resetSearchButton" class="igensia-enhancer-button">Réinitialiser</button>
+                    <label style="display:flex; align-items:center; gap:6px; margin-left:8px; white-space:nowrap;">
+                        <input type="checkbox" id="onlyWithNotesCheckbox" />
+                        <span style="font-size:13px;">Afficher uniquement matières avec notes</span>
+                    </label>
                 </div>
                 <div id="notesChartContainer" style="display: none; margin-top: 20px; padding: 15px; border-radius: 8px;">
                     <h3>Répartition des notes</h3>
@@ -229,6 +233,18 @@
 
             teacherSearchInput.addEventListener('input', filterTablesByTeacherOrEval);
             resetSearchButton.addEventListener('click', resetTableFilter);
+
+            // Checkbox: afficher uniquement les matières qui contiennent une note
+            const onlyWithNotesCheckbox = document.getElementById('onlyWithNotesCheckbox');
+            // Restore saved preference
+            try {
+                const saved = localStorage.getItem('igsOnlyWithNotes');
+                if (saved === '1') onlyWithNotesCheckbox.checked = true;
+            } catch (e) { /* ignore */ }
+            onlyWithNotesCheckbox.addEventListener('change', () => {
+                try { localStorage.setItem('igsOnlyWithNotes', onlyWithNotesCheckbox.checked ? '1' : '0'); } catch (e) {}
+                applyCurrentFilters();
+            });
 
             // Ne pas afficher ni récupérer les absences sur la page des notes.
 
@@ -410,41 +426,57 @@
         const searchTerm = document.getElementById('teacherSearchInput').value.toLowerCase();
         const notesContainer = document.querySelector('.text-center > div:last-child');
         if (!notesContainer) return;
-
-        originalTablesOrder.forEach(item => {
-            const teacherElement = item.table.querySelector('th.col-4'); // Nom du formateur
-            const evalNameElement = item.table.querySelector('th.col-5'); // Nom de l'évaluation (à vérifier si c'est le bon sélecteur)
-
-            let match = false;
-            if (teacherElement) {
-                const teacherName = teacherElement.textContent.toLowerCase();
-                if (teacherName.includes(searchTerm)) {
-                    match = true;
-                }
-            }
-            if (!match && evalNameElement) { // Si pas de correspondance avec le formateur, vérifier le nom de l'évaluation
-                const evalName = evalNameElement.textContent.toLowerCase();
-                if (evalName.includes(searchTerm)) {
-                    match = true;
-                }
-            }
-
-            if (match) {
-                item.table.style.display = ''; // Afficher la table
-            } else {
-                item.table.style.display = 'none'; // Masquer la table
-            }
-        });
+        // Use combined logic: teacher/eval search AND only-with-notes checkbox
+        applyCurrentFilters();
     }
 
     function resetTableFilter() {
         document.getElementById('teacherSearchInput').value = '';
         const notesContainer = document.querySelector('.text-center > div:last-child');
         if (!notesContainer) return;
+        // Reset search but keep the 'only with notes' checkbox state
+        applyCurrentFilters();
+    }
 
+    // Returns true if the provided table contains a real note (not empty and not '-')
+    function tableHasNote(table) {
+        try {
+            const noteElement = table.querySelector('tr:last-child td:last-child');
+            if (!noteElement) return false;
+            const raw = noteElement.textContent || '';
+            const txt = raw.trim();
+            if (!txt || txt === '-' ) return false;
+            // Sometimes innerHTML contains appended '(Validé)' labels; strip parentheses parts
+            const normalized = txt.split('\n')[0].split('(')[0].trim();
+            return normalized !== '' && normalized !== '-';
+        } catch (e) { return false; }
+    }
+
+    // Apply current filters: teacher search + only-with-notes checkbox
+    function applyCurrentFilters() {
+        const searchTerm = (document.getElementById('teacherSearchInput') && document.getElementById('teacherSearchInput').value.toLowerCase()) || '';
+        const onlyWith = (document.getElementById('onlyWithNotesCheckbox') && document.getElementById('onlyWithNotesCheckbox').checked) || false;
         originalTablesOrder.forEach(item => {
-            item.table.style.display = ''; // Afficher toutes les tables
+            let matchesSearch = false;
+            try {
+                const teacherElement = item.table.querySelector('th.col-4');
+                const evalNameElement = item.table.querySelector('th.col-5');
+                if (searchTerm === '') matchesSearch = true;
+                if (!matchesSearch && teacherElement) {
+                    const teacherName = teacherElement.textContent.toLowerCase();
+                    if (teacherName.includes(searchTerm)) matchesSearch = true;
+                }
+                if (!matchesSearch && evalNameElement) {
+                    const evalName = evalNameElement.textContent.toLowerCase();
+                    if (evalName.includes(searchTerm)) matchesSearch = true;
+                }
+            } catch (e) { matchesSearch = true; }
+
+            const hasNote = tableHasNote(item.table);
+            const shouldShow = matchesSearch && (!onlyWith || hasNote);
+            item.table.style.display = shouldShow ? '' : 'none';
         });
+        // If currently sorted differently, we keep the order but filters apply to visibility.
     }
 
     function setActiveButton(activeButton) {
