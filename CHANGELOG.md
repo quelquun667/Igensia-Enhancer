@@ -1,14 +1,4 @@
-# Changelog (mini)
-
-This is a minimal, human-maintained changelog kept alongside the repository to provide quick release notes without relying only on commit history.
-
-Format (recommended):
-
-- Use headings with the version and date: `## 2.2.3 - 2025-11-24`
-- Under each heading, add bullet points for notable changes.
-- Keep entries short and actionable.
-
-Example
+# Changelog
 
 ## 2.2.3 - 2025-11-24
 - Remove injected timer feature (moved/removed by user request).
