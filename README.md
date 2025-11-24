@@ -1,5 +1,7 @@
 
 # Igensia Extension
+ 
+Version: 2.2.3
 
 Ce dépôt contient l'extension de navigateur "Igensia" (dossier `IgensiaExtension`).
 
