@@ -1,11 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Igensia Enhancer",
-  "version": "2.2.3",
+  "version": "2.2.4",
   "description": "Améliore MonCampus Igensia : onglet Devoirs, résumé absences/notes, thèmes et réglages.",
   "permissions": ["activeTab", "scripting", "storage", "alarms", "notifications"],
   "host_permissions": ["https://moncampus.igensia-education.fr/*", "https://ws-notes-igs.wigorservices.net/*", "https://ws-edt-igs.wigorservices.net/*", "https://eabsences-igs.wigorservices.net/*", "https://api.github.com/repos/quelquun667/Igensia-Extension/releases/*", "https://raw.githubusercontent.com/quelquun667/Igensia-Extension/*"],
   "content_scripts": [
+    {
+      "matches": ["https://ws-notes-igs.wigorservices.net/Home/Releve*"],
+      "js": ["content.js"]
+    },
     {
       "matches": ["https://ws-notes-igs.wigorservices.net/home/releve*"],
       "js": ["content.js"]
