@@ -1,4 +1,4 @@
-(function() {
+(function () {
     console.log("Igensia Enhancer: Content script loaded.");
 
     // Theme application was removed per user request: the popup will manage preview only.
@@ -42,6 +42,17 @@
     }
 
     let originalTablesOrder = []; // Pour stocker l'ordre original des tables
+
+    // Variable pour stocker les notes simulées (effacées au refresh)
+    let simulatedGrades = []; // { moduleName, grade, coefficient }
+
+    // Avertissement avant de quitter si des notes simulées existent
+    window.addEventListener('beforeunload', (e) => {
+        if (simulatedGrades.length > 0) {
+            e.preventDefault();
+            e.returnValue = 'Vous avez des notes simulées non sauvegardées. Êtes-vous sûr de vouloir quitter ?';
+        }
+    });
 
     function calculateAndDisplaySummary() {
         const noteTables = document.querySelectorAll('.table-notes');
@@ -138,6 +149,7 @@
                 <div id="sort-buttons" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
                     <button id="sortValidated" class="igensia-enhancer-button">Trier par Validés</button>
                     <button id="sortNonValidated" class="igensia-enhancer-button">Trier par Non Validés</button>
+                    <button id="sortByDate" class="igensia-enhancer-button">Trier par Date</button>
                     <button id="sortNormal" class="igensia-enhancer-button">Ordre Normal</button>
                     <button id="toggleChart" class="igensia-enhancer-button">Afficher Graphique</button>
                 </div>
@@ -152,6 +164,34 @@
                 <div id="notesChartContainer" style="display: none; margin-top: 20px; padding: 15px; border-radius: 8px;">
                     <h3>Répartition des notes</h3>
                     <div id="notesChart" style="width: 100%; height: 200px; display: flex; align-items: flex-end; justify-content: space-around;"></div>
+                </div>
+                <div id="gradeSimulatorContainer" style="margin-top: 20px; padding: 15px; border: 2px dashed #888; border-radius: 8px;">
+                    <h3 style="margin-bottom: 10px;">📊 Simulateur de Notes</h3>
+                    <p style="font-size: 12px; opacity: 0.7; margin-bottom: 10px;">Ajoutez des notes hypothétiques pour simuler votre moyenne. Les notes simulées disparaîtront au rafraîchissement.</p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                        <select id="simModuleSelect" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; flex: 1; min-width: 200px;"></select>
+                        <select id="simGradeSelect" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc;">
+                            <option value="A">A (4.0)</option>
+                            <option value="A-">A- (3.7)</option>
+                            <option value="B+">B+ (3.3)</option>
+                            <option value="B">B (3.0)</option>
+                            <option value="B-">B- (2.7)</option>
+                            <option value="C+">C+ (2.3)</option>
+                            <option value="C">C (2.0)</option>
+                            <option value="C-">C- (1.7)</option>
+                            <option value="D+">D+ (1.3)</option>
+                            <option value="D">D (1.0)</option>
+                            <option value="D-">D- (0.7)</option>
+                            <option value="E">E (0.0)</option>
+                        </select>
+                        <input type="number" id="simCoeffInput" placeholder="Coeff" value="1" min="0.1" step="0.1" style="padding: 8px; border-radius: 5px; border: 1px solid #ccc; width: 70px;" />
+                        <button id="addSimGrade" class="igensia-enhancer-button" style="background-color: #28a745 !important; border-color: #28a745 !important;">+ Ajouter</button>
+                    </div>
+                    <div id="simGradesList" style="margin-top: 15px;"></div>
+                    <div id="simAverageDisplay" style="margin-top: 15px; padding: 10px; border-radius: 5px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; display: none;">
+                        <strong>🔮 Moyenne simulée (GPA) : <span id="simAverageValue">N/A</span></strong>
+                        <p style="font-size: 11px; margin-top: 5px; opacity: 0.9;">⚠️ Cette moyenne inclut vos notes simulées et est hypothétique.</p>
+                    </div>
                 </div>
             `;
 
@@ -217,6 +257,13 @@
                 setActiveButton(sortNormalButton);
             });
 
+            // Tri par date
+            const sortByDateButton = document.getElementById('sortByDate');
+            sortByDateButton.addEventListener('click', () => {
+                sortTablesByDate();
+                setActiveButton(sortByDateButton);
+            });
+
             toggleChartButton.addEventListener('click', () => {
                 if (notesChartContainer.style.display === 'none') {
                     notesChartContainer.style.display = 'block';
@@ -239,10 +286,14 @@
             // Restore saved preference
             try {
                 const saved = localStorage.getItem('igsOnlyWithNotes');
-                if (saved === '1') onlyWithNotesCheckbox.checked = true;
+                if (saved === '1') {
+                    onlyWithNotesCheckbox.checked = true;
+                    // Appliquer le filtre immédiatement si la checkbox était cochée
+                    setTimeout(() => applyCurrentFilters(), 100);
+                }
             } catch (e) { /* ignore */ }
             onlyWithNotesCheckbox.addEventListener('change', () => {
-                try { localStorage.setItem('igsOnlyWithNotes', onlyWithNotesCheckbox.checked ? '1' : '0'); } catch (e) {}
+                try { localStorage.setItem('igsOnlyWithNotes', onlyWithNotesCheckbox.checked ? '1' : '0'); } catch (e) { }
                 applyCurrentFilters();
             });
 
@@ -250,6 +301,9 @@
 
             // Définir le bouton "Ordre Normal" comme actif par défaut
             setActiveButton(sortNormalButton);
+
+            // Initialiser le simulateur de notes
+            initGradeSimulator();
         } else if (absTables && absTables.length > 0) {
             // Page d'absences: afficher uniquement le résumé des absences + recherche
             summaryDiv.innerHTML = `
@@ -283,7 +337,7 @@
                 summaryDiv.remove();
             }
         }
-        
+
     }
 
     // ----- Absences -----
@@ -445,7 +499,7 @@
             if (!noteElement) return false;
             const raw = noteElement.textContent || '';
             const txt = raw.trim();
-            if (!txt || txt === '-' ) return false;
+            if (!txt || txt === '-') return false;
             // Sometimes innerHTML contains appended '(Validé)' labels; strip parentheses parts
             const normalized = txt.split('\n')[0].split('(')[0].trim();
             return normalized !== '' && normalized !== '-';
@@ -511,7 +565,9 @@
         const tables = document.querySelectorAll('.table-notes');
         console.log("Found tables:", tables.length); // Debug log
         const noteCounts = {};
-        const allNotes = Object.keys(noteMapping).sort((a, b) => noteMapping[b] - noteMapping[a]); // Tri par valeur GPA décroissante
+        const allNotesRaw = Object.keys(noteMapping).sort((a, b) => noteMapping[b] - noteMapping[a]); // Tri par valeur GPA décroissante
+        // Exclure A+ et F du graphique
+        const allNotes = allNotesRaw.filter(note => note !== 'A+' && note !== 'F');
 
         tables.forEach(table => {
             const noteElement = table.querySelector('tr:last-child td:last-child');
@@ -624,6 +680,208 @@
         sortedTables.forEach(item => {
             notesContainer.appendChild(item.table);
         });
+    }
+
+    // Fonction pour trier les tables par date
+    function sortTablesByDate() {
+        const notesContainer = document.querySelector('.text-center > div:last-child');
+        if (!notesContainer) return;
+
+        // Extraire la date de chaque table
+        const tablesWithDates = originalTablesOrder.map(item => {
+            let dateStr = '';
+            let dateObj = null;
+            try {
+                // Chercher la date dans la table (généralement dans une cellule)
+                const rows = item.table.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const cells = row.querySelectorAll('td, th');
+                    cells.forEach(cell => {
+                        const text = cell.textContent.trim();
+                        // Format date: DD/MM/YYYY ou DD-MM-YYYY
+                        const dateMatch = text.match(/(\d{2})[\/\-](\d{2})[\/\-](\d{4})/);
+                        if (dateMatch && !dateObj) {
+                            const day = parseInt(dateMatch[1], 10);
+                            const month = parseInt(dateMatch[2], 10) - 1;
+                            const year = parseInt(dateMatch[3], 10);
+                            dateObj = new Date(year, month, day);
+                            dateStr = text;
+                        }
+                    });
+                });
+            } catch (e) {
+                console.warn('Impossible d\'extraire la date:', e);
+            }
+            return { ...item, dateObj, dateStr };
+        });
+
+        // Trier par date (plus récent en premier)
+        tablesWithDates.sort((a, b) => {
+            if (!a.dateObj && !b.dateObj) return 0;
+            if (!a.dateObj) return 1;
+            if (!b.dateObj) return -1;
+            return b.dateObj - a.dateObj; // Plus récent en premier
+        });
+
+        // Reconstruire le conteneur
+        notesContainer.innerHTML = '';
+        tablesWithDates.forEach(item => {
+            notesContainer.appendChild(item.table);
+        });
+    }
+
+    // Initialiser le simulateur de notes
+    function initGradeSimulator() {
+        const simModuleSelect = document.getElementById('simModuleSelect');
+        const simGradeSelect = document.getElementById('simGradeSelect');
+        const simCoeffInput = document.getElementById('simCoeffInput');
+        const addSimGradeBtn = document.getElementById('addSimGrade');
+        const simGradesList = document.getElementById('simGradesList');
+        const simAverageDisplay = document.getElementById('simAverageDisplay');
+        const simAverageValue = document.getElementById('simAverageValue');
+        const gradeSimulatorContainer = document.getElementById('gradeSimulatorContainer');
+
+        if (!simModuleSelect || !addSimGradeBtn) return;
+
+        // Appliquer le style dark mode si nécessaire
+        if (document.body.classList.contains('dark-mode')) {
+            gradeSimulatorContainer.style.borderColor = '#555';
+            simModuleSelect.style.backgroundColor = 'var(--dark-primary-color)';
+            simModuleSelect.style.color = 'var(--dark-color)';
+            simModuleSelect.style.borderColor = '#434343';
+            simGradeSelect.style.backgroundColor = 'var(--dark-primary-color)';
+            simGradeSelect.style.color = 'var(--dark-color)';
+            simGradeSelect.style.borderColor = '#434343';
+            simCoeffInput.style.backgroundColor = 'var(--dark-primary-color)';
+            simCoeffInput.style.color = 'var(--dark-color)';
+            simCoeffInput.style.borderColor = '#434343';
+        }
+
+        // Remplir le select des modules avec les matières disponibles
+        const tables = document.querySelectorAll('.table-notes');
+        const modules = [];
+        tables.forEach((table, index) => {
+            try {
+                const evalNameElement = table.querySelector('th.col-5');
+                const coeffElement = table.querySelector('tr:last-child td:nth-child(3)');
+                let moduleName = evalNameElement ? evalNameElement.textContent.trim() : `Module ${index + 1}`;
+                let coeff = coeffElement ? parseFloat(coeffElement.textContent.trim()) : 1;
+                if (isNaN(coeff)) coeff = 1;
+                modules.push({ name: moduleName, coeff, index });
+            } catch (e) {
+                modules.push({ name: `Module ${index + 1}`, coeff: 1, index });
+            }
+        });
+
+        // Ajouter une option personnalisée
+        const customOption = document.createElement('option');
+        customOption.value = '__custom__';
+        customOption.textContent = '📝 Nouvelle matière (personnalisée)';
+        simModuleSelect.appendChild(customOption);
+
+        modules.forEach((mod, idx) => {
+            const opt = document.createElement('option');
+            opt.value = idx;
+            opt.textContent = mod.name;
+            opt.dataset.coeff = mod.coeff;
+            simModuleSelect.appendChild(opt);
+        });
+
+        // Mettre à jour le coefficient quand on change de module
+        simModuleSelect.addEventListener('change', () => {
+            const selected = simModuleSelect.options[simModuleSelect.selectedIndex];
+            if (selected.dataset.coeff) {
+                simCoeffInput.value = selected.dataset.coeff;
+            } else {
+                simCoeffInput.value = '1';
+            }
+        });
+
+        // Ajouter une note simulée
+        addSimGradeBtn.addEventListener('click', () => {
+            const selectedOption = simModuleSelect.options[simModuleSelect.selectedIndex];
+            let moduleName = selectedOption.textContent;
+            if (selectedOption.value === '__custom__') {
+                moduleName = prompt('Entrez le nom de la matière:');
+                if (!moduleName) return;
+            }
+            const grade = simGradeSelect.value;
+            const coeff = parseFloat(simCoeffInput.value) || 1;
+
+            simulatedGrades.push({ moduleName, grade, coefficient: coeff });
+            updateSimulatedGradesDisplay();
+            calculateSimulatedAverage();
+        });
+
+        function updateSimulatedGradesDisplay() {
+            simGradesList.innerHTML = '';
+            if (simulatedGrades.length === 0) {
+                simAverageDisplay.style.display = 'none';
+                return;
+            }
+
+            simAverageDisplay.style.display = 'block';
+
+            simulatedGrades.forEach((sim, idx) => {
+                const item = document.createElement('div');
+                item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 8px; margin-bottom: 5px; background: rgba(103, 126, 234, 0.2); border-radius: 5px; border-left: 3px solid #667eea;';
+                item.innerHTML = `
+                    <span><strong>${sim.moduleName}</strong> — Note: <strong>${sim.grade}</strong> (coeff: ${sim.coefficient})</span>
+                    <button class="remove-sim-grade" data-idx="${idx}" style="background: #dc3545; color: white; border: none; padding: 4px 10px; border-radius: 3px; cursor: pointer;">✕</button>
+                `;
+                simGradesList.appendChild(item);
+            });
+
+            // Event listeners pour supprimer
+            simGradesList.querySelectorAll('.remove-sim-grade').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.dataset.idx, 10);
+                    simulatedGrades.splice(idx, 1);
+                    updateSimulatedGradesDisplay();
+                    calculateSimulatedAverage();
+                });
+            });
+        }
+
+        function calculateSimulatedAverage() {
+            // Calculer la moyenne réelle + simulée
+            let totalGPA = 0;
+            let totalCoeff = 0;
+
+            // Notes réelles
+            const tables = document.querySelectorAll('.table-notes');
+            tables.forEach(table => {
+                const noteElement = table.querySelector('tr:last-child td:last-child');
+                const coeffElement = table.querySelector('tr:last-child td:nth-child(3)');
+
+                if (noteElement && coeffElement) {
+                    const noteTextRaw = noteElement.textContent.trim();
+                    const noteText = noteTextRaw.split('\n')[0].split('(')[0].trim();
+                    const coefficient = parseFloat(coeffElement.textContent.trim());
+
+                    const isEmptyNote = noteText === '' || noteText === '-';
+                    if (!isEmptyNote) {
+                        const gpa = convertNoteToGPA(noteText);
+                        if (gpa !== null && !isNaN(coefficient) && coefficient > 0) {
+                            totalGPA += gpa * coefficient;
+                            totalCoeff += coefficient;
+                        }
+                    }
+                }
+            });
+
+            // Ajouter les notes simulées
+            simulatedGrades.forEach(sim => {
+                const gpa = convertNoteToGPA(sim.grade);
+                if (gpa !== null && sim.coefficient > 0) {
+                    totalGPA += gpa * sim.coefficient;
+                    totalCoeff += sim.coefficient;
+                }
+            });
+
+            const averageGPA = totalCoeff > 0 ? (totalGPA / totalCoeff).toFixed(2) : 'N/A';
+            simAverageValue.textContent = averageGPA;
+        }
     }
 
     // Exécuter le script après le chargement complet de la page
