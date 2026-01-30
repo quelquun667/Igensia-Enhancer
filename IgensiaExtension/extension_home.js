@@ -180,7 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
                 }
-            }).catch(() => {});
+            }).catch(() => { });
         });
 
         closeSettingsBtn.addEventListener('click', () => {
@@ -195,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await popupSendMessage({ action: 'clear_update_flag' });
                 if (settingsBadge) settingsBadge.style.display = 'none';
-            } catch(e) {}
+            } catch (e) { }
             chrome.tabs.create({ url: 'https://github.com/quelquun667/Igensia-Extension' });
         });
     }
@@ -204,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 await popupSendMessage({ action: 'clear_update_flag' });
                 if (settingsBadge) settingsBadge.style.display = 'none';
-            } catch(e) {}
+            } catch (e) { }
             if (settingsUpdateActions) settingsUpdateActions.style.display = 'none';
             if (settingsCheckUpdateBtn) settingsCheckUpdateBtn.style.display = '';
         });
@@ -217,7 +217,51 @@ document.addEventListener('DOMContentLoaded', () => {
             if (resp && resp.ok && resp.value) {
                 if (settingsBadge) settingsBadge.style.display = 'flex';
             }
-        } catch(e) { }
+        } catch (e) { }
+    })();
+
+    // Time stats display
+    (async () => {
+        try {
+            const resp = await popupSendMessage({ action: 'get_time_stats' });
+            if (resp && resp.ok && resp.stats) {
+                const stats = resp.stats;
+                const today = new Date().toISOString().split('T')[0];
+
+                // Calculate week start (Monday)
+                const now = new Date();
+                const dayOfWeek = now.getDay();
+                const diff = now.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1);
+                const weekStart = new Date(now.setDate(diff)).toISOString().split('T')[0];
+
+                let todaySeconds = stats[today] || 0;
+                let weekSeconds = 0;
+                let totalSeconds = 0;
+
+                Object.entries(stats).forEach(([date, secs]) => {
+                    totalSeconds += secs;
+                    if (date >= weekStart) {
+                        weekSeconds += secs;
+                    }
+                });
+
+                const formatTime = (secs) => {
+                    const hours = Math.floor(secs / 3600);
+                    const mins = Math.floor((secs % 3600) / 60);
+                    return `${hours}h ${mins}m`;
+                };
+
+                const timeToday = document.getElementById('time-today');
+                const timeWeek = document.getElementById('time-week');
+                const timeTotal = document.getElementById('time-total');
+
+                if (timeToday) timeToday.textContent = formatTime(todaySeconds);
+                if (timeWeek) timeWeek.textContent = formatTime(weekSeconds);
+                if (timeTotal) timeTotal.textContent = formatTime(totalSeconds);
+            }
+        } catch (e) {
+            console.warn('Error fetching time stats:', e);
+        }
     })();
 
     // Logique pour changer de thème
@@ -231,60 +275,60 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setSettingsBadge(visible) {
-  const badge = document.getElementById('settings-badge');
-  if (!badge) return;
-  badge.style.display = visible ? 'inline-flex' : 'none';
+    const badge = document.getElementById('settings-badge');
+    if (!badge) return;
+    badge.style.display = visible ? 'inline-flex' : 'none';
 }
 
 async function getFlag() {
-  return new Promise(res => {
-    chrome.runtime.sendMessage({ action: 'get_update_flag' }, r => res(!!(r && r.value)));
-  });
+    return new Promise(res => {
+        chrome.runtime.sendMessage({ action: 'get_update_flag' }, r => res(!!(r && r.value)));
+    });
 }
 async function clearFlag() {
-  return new Promise(res => {
-    chrome.runtime.sendMessage({ action: 'clear_update_flag' }, () => res());
-  });
+    return new Promise(res => {
+        chrome.runtime.sendMessage({ action: 'clear_update_flag' }, () => res());
+    });
 }
 async function runCheck() {
-  return new Promise(res => {
-    chrome.runtime.sendMessage({ action: 'run_check_remote_manifest' }, r => res(r));
-  });
+    return new Promise(res => {
+        chrome.runtime.sendMessage({ action: 'run_check_remote_manifest' }, r => res(r));
+    });
 }
 
 // Au chargement du popup, synchroniser le badge avec le flag
 document.addEventListener('DOMContentLoaded', async () => {
-  const hasFlag = await getFlag();
-  setSettingsBadge(hasFlag);
+    const hasFlag = await getFlag();
+    setSettingsBadge(hasFlag);
 
-  // Option: si un badge traîne, re-check silencieux pour l’auto-nettoyer
-  if (hasFlag) {
-    const r = await runCheck();
-    if (r && r.ok && !r.updated) {
-      await clearFlag();
-      setSettingsBadge(false);
+    // Option: si un badge traîne, re-check silencieux pour l’auto-nettoyer
+    if (hasFlag) {
+        const r = await runCheck();
+        if (r && r.ok && !r.updated) {
+            await clearFlag();
+            setSettingsBadge(false);
+        }
     }
-  }
 });
 
 // Quand on clique "Vérifier mise à jour" dans les paramètres
 async function onCheckUpdateFromSettings() {
-  settingsCheckUpdateBtn.disabled = true;
-  const r = await runCheck();
+    settingsCheckUpdateBtn.disabled = true;
+    const r = await runCheck();
 
-  if (r && r.ok && r.updated) {
-    // montrer les actions Voir/Ignorer dans les paramètres
-    if (settingsBadge) settingsBadge.style.display = 'flex';
-    if (settingsUpdateActions) settingsUpdateActions.style.display = 'block';
-    if (settingsUpdateText) settingsUpdateText.textContent = `Nouvelle version disponible : ${r.remoteVersion} (locale ${r.localVersion})`;
-    settingsCheckUpdateBtn.style.display = 'none';
-  } else {
-    // pas d’update: effacer badge/flag et remettre le bouton
-    await clearFlag();
-    setSettingsBadge(false);
-    // masquer le bloc d'actions s'il était visible, réafficher le bouton
-    if (settingsUpdateActions) settingsUpdateActions.style.display = 'none';
-    if (settingsCheckUpdateBtn) settingsCheckUpdateBtn.style.display = '';
-  }
+    if (r && r.ok && r.updated) {
+        // montrer les actions Voir/Ignorer dans les paramètres
+        if (settingsBadge) settingsBadge.style.display = 'flex';
+        if (settingsUpdateActions) settingsUpdateActions.style.display = 'block';
+        if (settingsUpdateText) settingsUpdateText.textContent = `Nouvelle version disponible : ${r.remoteVersion} (locale ${r.localVersion})`;
+        settingsCheckUpdateBtn.style.display = 'none';
+    } else {
+        // pas d’update: effacer badge/flag et remettre le bouton
+        await clearFlag();
+        setSettingsBadge(false);
+        // masquer le bloc d'actions s'il était visible, réafficher le bouton
+        if (settingsUpdateActions) settingsUpdateActions.style.display = 'none';
+        if (settingsCheckUpdateBtn) settingsCheckUpdateBtn.style.display = '';
+    }
 }
 // Assure-toi que le bouton appelle bien onCheckUpdateFromSettings

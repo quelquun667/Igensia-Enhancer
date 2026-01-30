@@ -1,36 +1,77 @@
 {
   "manifest_version": 3,
   "name": "Igensia Enhancer",
-  "version": "2.3.0",
+  "version": "2.4.1",
   "description": "Améliore MonCampus Igensia : onglet Devoirs, résumé absences/notes, thèmes et réglages.",
-  "permissions": ["activeTab", "scripting", "storage", "alarms", "notifications"],
-  "host_permissions": ["https://moncampus.igensia-education.fr/*", "https://ws-notes-igs.wigorservices.net/*", "https://ws-edt-igs.wigorservices.net/*", "https://eabsences-igs.wigorservices.net/*", "https://api.github.com/repos/quelquun667/Igensia-Extension/releases/*", "https://raw.githubusercontent.com/quelquun667/Igensia-Extension/*"],
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage",
+    "alarms",
+    "notifications",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://moncampus.igensia-education.fr/*",
+    "https://ws-notes-igs.wigorservices.net/*",
+    "https://ws-edt-igs.wigorservices.net/*",
+    "https://eabsences-igs.wigorservices.net/*",
+    "https://api.github.com/repos/quelquun667/Igensia-Extension/releases/*",
+    "https://raw.githubusercontent.com/quelquun667/Igensia-Extension/*"
+  ],
   "content_scripts": [
     {
-      "matches": ["https://ws-notes-igs.wigorservices.net/Home/Releve*"],
-      "js": ["content.js"]
+      "matches": [
+        "https://ws-notes-igs.wigorservices.net/Home/Releve*"
+      ],
+      "js": [
+        "content.js"
+      ]
     },
     {
-      "matches": ["https://ws-notes-igs.wigorservices.net/home/releve*"],
-      "js": ["content.js"]
+      "matches": [
+        "https://ws-notes-igs.wigorservices.net/home/releve*"
+      ],
+      "js": [
+        "content.js"
+      ]
     },
     {
-      "matches": ["https://eabsences-igs.wigorservices.net/home/item*"],
-      "js": ["content.js"]
-    },
-        {
-      "matches": ["https://eabsences-igs.wigorservices.net/Home/Item*"],
-      "js": ["content.js"]
+      "matches": [
+        "https://eabsences-igs.wigorservices.net/home/item*"
+      ],
+      "js": [
+        "content.js"
+      ]
     },
     {
-      "matches": ["https://moncampus.igensia-education.fr/*"],
-      "js": ["inject_devoirs_tab.js", "content.js"],
+      "matches": [
+        "https://eabsences-igs.wigorservices.net/Home/Item*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    },
+    {
+      "matches": [
+        "https://moncampus.igensia-education.fr/*"
+      ],
+      "js": [
+        "inject_devoirs_tab.js",
+        "content.js"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://ws-edt-igs.wigorservices.net/WebPsDyn.aspx*"],
-      "js": ["edt_content.js"],
-      "css": ["search.css"],
+      "matches": [
+        "https://ws-edt-igs.wigorservices.net/WebPsDyn.aspx*"
+      ],
+      "js": [
+        "edt_content.js"
+      ],
+      "css": [
+        "search.css"
+      ],
       "run_at": "document_idle"
     }
   ],
@@ -47,8 +88,13 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["search.css", "search.js"],
-      "matches": ["https://ws-edt-igs.wigorservices.net/*"]
+      "resources": [
+        "search.css",
+        "search.js"
+      ],
+      "matches": [
+        "https://ws-edt-igs.wigorservices.net/*"
+      ]
     }
   ]
 }
