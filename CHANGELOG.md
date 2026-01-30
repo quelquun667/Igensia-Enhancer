@@ -1,4 +1,16 @@
 # Journal des modifications
+## 2.4.1 - 2026-01-30
+- Toggle mode simulation
+
+## 2.4.0 - 2026-01-30
+### Nouveautés
+- **Édition des notes existantes** : Modifiez les notes dans le simulateur pour voir l'impact sur la moyenne
+- **Objectif de moyenne GPA** : Définissez un objectif et suivez votre progression avec une barre visuelle
+- **Export PDF** : Exportez votre relevé de notes en PDF formaté
+- **Temps passé** : Suivez le temps passé sur MonCampus (aujourd'hui, semaine, total)
+- **Alertes de notes** : Notifications Chrome automatiques lors de nouvelles notes
+
+---
 ## 2.3.0 - 2026-01-30
 ### Nouveautés
 - **Tri par date** : Nouveau bouton pour trier les notes par date (plus récent en premier)
