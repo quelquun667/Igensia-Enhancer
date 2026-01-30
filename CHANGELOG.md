@@ -1,4 +1,18 @@
 # Journal des modifications
+## 2.3.0 - 2026-01-30
+### Nouveautés
+- **Tri par date** : Nouveau bouton pour trier les notes par date (plus récent en premier)
+- **Simulateur de notes** : Ajoutez des notes hypothétiques pour simuler votre moyenne GPA
+  - Sélection de matière existante ou personnalisée
+  - Coefficient ajustable
+  - Moyenne simulée séparée avec indicateur visuel
+  - Confirmation avant de quitter si des notes simulées sont présentes
+  - Notes simulées effacées automatiquement au rafraîchissement
+
+### Améliorations
+- Exclusion des notes A+ et F du graphique de répartition
+- La checkbox "Afficher uniquement matières avec notes" applique maintenant le filtre automatiquement au chargement
+
 ## 2.2.5 - 2025-12-08
 - Ajout de la prise en charge des URL de pages de notes avec différentes casses (majuscules/minuscules).
 
