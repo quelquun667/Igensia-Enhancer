@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Igensia Enhancer",
-  "version": "2.4.1",
+  "version": "2.5.0",
   "description": "Améliore MonCampus Igensia : onglet Devoirs, résumé absences/notes, thèmes et réglages.",
   "permissions": [
     "activeTab",
