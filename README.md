@@ -1,6 +1,6 @@
 # Igensia Extension
  
-## Version: 2.2.5
+## Version: 2.5.0
 
 Ce dépôt contient l'extension de navigateur "Igensia" (dossier `IgensiaExtension`).
 
@@ -11,7 +11,7 @@ Ce dépôt contient l'extension de navigateur "Igensia" (dossier `IgensiaExtensi
 	<img src="img/notes-demo.png" alt="Tableau des notes et graphiques" width="30%" />
 	<img src="img/absences-demo.png" alt="Résumé des absences" width="30%" />
 	<br/>
-	<em>De gauche à droite : Mes Devoirs • Répartition des notes • Résumé des absences</em>
+	<em>De gauche à droite : Mes Devoirs • Répartition des notes • Résumé des absences</em>
 	<br/>
 </p>
 
@@ -23,19 +23,39 @@ Ce README explique comment télécharger le projet et l'importer dans un navigat
 
 - Mes Devoirs (dans le popup)
 	- Ajouter, modifier, terminer et supprimer des devoirs
-	- Date d’échéance et affichage clair
-	- Thème clair/sombre synchronisé avec le reste de l’extension
+	- Date d'échéance et affichage clair
+	- Thème clair/sombre synchronisé avec le reste de l'extension
 
 - Notes (pages MonCampus/Wigor)
 	- Calcul automatique de la moyenne pondérée (GPA) et du pourcentage de modules validés
-	- Tri rapide par « Validés », « Non Validés » ou « Ordre normal »
+	- Tri rapide par « Validés », « Non Validés », « Date » ou « Ordre normal »
 	- Recherche par formateur ou évaluation
+	- Filtre « Afficher uniquement matières avec notes »
 	- Graphique de répartition des notes (afficher/masquer)
+	- Export PDF du relevé de notes
+
+- Objectif GPA
+	- Barre de progression sur échelle fixe 0 → 4.0
+	- Curseur d'objectif déplaçable à la souris
+	- Palette de couleurs 4 paliers : rouge → orange → jaune → vert
+	- Sauvegarde persistante de l'objectif
+
+- Simulateur de notes
+	- Mode simulation activable/désactivable avec persistance
+	- Ajout de notes hypothétiques avec coefficient
+	- Modification des notes existantes (✏️) avec mise à jour visuelle instantanée
+	- Moyenne simulée séparée
 
 - Absences
 	- Récapitulatif des heures: Justifiées, Non justifiées, Retards/Exclusions
 	- Recherche/filtre par matière ou action
-	- Récupération résiliente via le service worker (fallback en cas d’erreurs réseau/CORS)
+	- Récupération résiliente via le service worker (fallback en cas d'erreurs réseau/CORS)
+
+- Alertes de notes
+	- Notifications Chrome automatiques lors de nouvelles notes
+
+- Temps passé sur MonCampus
+	- Suivi automatique du temps (aujourd'hui, semaine, total)
 
 - Mises à jour
 	- Vérification automatique toutes les 6h via le manifest distant (GitHub)
@@ -46,7 +66,7 @@ Ce README explique comment télécharger le projet et l'importer dans un navigat
 	- Thème clair/sombre, mémorisé entre les sessions
 
 - Intégration MonCampus
-	- Insertion d’un bouton/onglet « Mes Devoirs » pour ouvrir rapidement le popup
+	- Insertion d'un bouton/onglet « Mes Devoirs » pour ouvrir rapidement le popup
 
 - Vie privée
 	- Données stockées localement dans le navigateur; aucune télémétrie
@@ -103,4 +123,3 @@ Important : le chargement temporaire n'est pas persistant — l'extension sera d
 ## Remarques finales
 
 Ce README couvre le chargement en mode développement. Si vous souhaitez préparer une version distribuable ou publier l'extension, dites-moi quel navigateur vous ciblez en priorité et je peux ajouter les étapes de packaging et publication.
-
