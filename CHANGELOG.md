@@ -1,4 +1,16 @@
 # Journal des modifications
+## 2.5.0 - 2026-02-11
+### Nouveautés
+- **Barre GPA refaite** : Échelle fixe 0→4, la barre colorée représente la moyenne actuelle
+- **Curseur objectif** : Marqueur visuel déplaçable à la souris sur la barre de progression
+- **Palette de couleurs réaliste** : Rouge → Orange → Jaune → Vert selon la proximité à l'objectif
+
+### Corrections
+- **Filtre "matières avec notes"** : La checkbox fonctionne à nouveau correctement
+- **Cap objectif GPA** : Impossible de dépasser 4.0
+- **Modification notes** : Les notes éditées se mettent à jour visuellement dans le tableau
+- **Stabilité** : Prévention des écouteurs dupliqués sur les boutons d'édition
+
 ## 2.4.1 - 2026-01-30
 - Toggle mode simulation
 

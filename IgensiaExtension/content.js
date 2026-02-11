@@ -237,12 +237,22 @@
             // Récupérer l'objectif sauvegardé
             let savedObjective = '3.0';
             try { savedObjective = localStorage.getItem('igsGpaObjective') || '3.0'; } catch (e) { }
-            const objectiveNum = parseFloat(savedObjective);
+            const objectiveNum = Math.min(4, Math.max(0, parseFloat(savedObjective) || 3));
             const currentGPA = parseFloat(averageGPA) || 0;
-            const gpaProgress = objectiveNum > 0 ? Math.min((currentGPA / objectiveNum) * 100, 100) : 0;
+            // Barre sur échelle 0-4 (max GPA)
+            const gpaProgress = Math.min((currentGPA / 4) * 100, 100);
+            const objectivePosition = Math.min((objectiveNum / 4) * 100, 100);
             const gpaDiff = (currentGPA - objectiveNum).toFixed(2);
             const gpaStatus = gpaDiff >= 0 ? `✅ +${gpaDiff}` : `⚠️ ${gpaDiff}`;
-            const progressColor = gpaDiff >= 0 ? '#28a745' : (gpaDiff >= -0.5 ? '#ffc107' : '#dc3545');
+            // Couleurs 4 paliers réalistes
+            const getGpaColor = (gpa, obj) => {
+                const diff = gpa - obj;
+                if (diff >= 0) return '#28a745';     // Vert: objectif atteint/dépassé
+                if (diff >= -0.2) return '#ffc107';   // Jaune: très proche
+                if (diff >= -0.5) return '#fd7e14';   // Orange: proche
+                return '#dc3545';                     // Rouge: loin
+            };
+            const progressColor = getGpaColor(currentGPA, objectiveNum);
 
             summaryDiv.innerHTML = `
                 <p><strong>Moyenne pondérée (GPA) : ${averageGPA}</strong></p>
@@ -250,13 +260,23 @@
                 <div id="gpaObjectiveContainer" style="margin-top: 10px; padding: 12px; border-radius: 8px; background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%); border: 1px solid rgba(102,126,234,0.3);">
                     <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                         <span style="font-weight: bold;">🎯 Objectif GPA :</span>
-                        <input type="number" id="gpaObjectiveInput" value="${savedObjective}" min="0" max="4" step="0.1" style="width: 70px; padding: 5px; border-radius: 5px; border: 1px solid #ccc; text-align: center;">
+                        <input type="number" id="gpaObjectiveInput" value="${objectiveNum}" min="0" max="4" step="0.1" style="width: 70px; padding: 5px; border-radius: 5px; border: 1px solid #ccc; text-align: center;">
                         <span id="gpaStatusDisplay" style="font-weight: bold; color: ${progressColor};">${gpaStatus}</span>
                     </div>
-                    <div style="margin-top: 10px; background: #e0e0e0; border-radius: 10px; height: 20px; overflow: hidden;">
-                        <div id="gpaProgressBar" style="height: 100%; width: ${gpaProgress}%; background: ${progressColor}; transition: width 0.3s, background 0.3s; border-radius: 10px;"></div>
+                    <div id="gpaBarWrapper" style="position: relative; margin-top: 10px;">
+                        <div style="background: #e0e0e0; border-radius: 10px; height: 22px; overflow: hidden; position: relative;">
+                            <div id="gpaProgressBar" style="height: 100%; width: ${gpaProgress}%; background: ${progressColor}; transition: width 0.3s, background 0.3s; border-radius: 10px;"></div>
+                        </div>
+                        <div id="gpaObjectiveCursor" style="position: absolute; top: 0; left: ${objectivePosition}%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; cursor: grab; user-select: none;">
+                            <div style="width: 3px; height: 22px; background: ${document.body.classList.contains('dark-mode') ? '#fff' : '#333'}; border-radius: 2px; opacity: 0.85;"></div>
+                            <div style="width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-top: 7px solid ${document.body.classList.contains('dark-mode') ? '#fff' : '#333'}; margin-top: -1px;"></div>
+                            <span style="font-size: 10px; font-weight: bold; color: ${document.body.classList.contains('dark-mode') ? '#ccc' : '#555'}; margin-top: 2px;">${objectiveNum}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 10px; opacity: 0.5;">
+                            <span>0</span><span>1.0</span><span>2.0</span><span>3.0</span><span>4.0</span>
+                        </div>
                     </div>
-                    <p style="font-size: 11px; margin-top: 5px; opacity: 0.7;">Progression vers votre objectif de moyenne</p>
+                    <p style="font-size: 11px; margin-top: 5px; opacity: 0.7;">Barre = votre moyenne actuelle · Curseur = objectif</p>
                 </div>
                 <div id="sort-buttons" style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 5px;">
                     <button id="sortValidated" class="igensia-enhancer-button">Trier par Validés</button>
@@ -429,11 +449,52 @@
             // Event listener pour l'objectif GPA
             const gpaObjectiveInput = document.getElementById('gpaObjectiveInput');
             gpaObjectiveInput.addEventListener('change', () => {
-                const newObjective = gpaObjectiveInput.value;
-                try { localStorage.setItem('igsGpaObjective', newObjective); } catch (e) { }
+                // Clamper à [0, 4]
+                let newVal = parseFloat(gpaObjectiveInput.value) || 0;
+                newVal = Math.min(4, Math.max(0, newVal));
+                gpaObjectiveInput.value = newVal;
+                try { localStorage.setItem('igsGpaObjective', String(newVal)); } catch (e) { }
                 // Mettre à jour l'affichage
-                updateGpaObjectiveDisplay(parseFloat(averageGPA) || 0, parseFloat(newObjective) || 3);
+                updateGpaObjectiveDisplay(parseFloat(averageGPA) || 0, newVal);
             });
+
+            // Drag du curseur objectif GPA
+            const gpaCursor = document.getElementById('gpaObjectiveCursor');
+            const gpaBarWrapper = document.getElementById('gpaBarWrapper');
+            if (gpaCursor && gpaBarWrapper) {
+                let isDragging = false;
+                gpaCursor.addEventListener('mousedown', (e) => {
+                    isDragging = true;
+                    gpaCursor.style.cursor = 'grabbing';
+                    e.preventDefault();
+                });
+                document.addEventListener('mousemove', (e) => {
+                    if (!isDragging) return;
+                    const rect = gpaBarWrapper.querySelector('div').getBoundingClientRect();
+                    let ratio = (e.clientX - rect.left) / rect.width;
+                    ratio = Math.max(0, Math.min(1, ratio));
+                    const newObj = Math.round(ratio * 40) / 10; // Arrondi à 0.1
+                    gpaCursor.style.left = `${(newObj / 4) * 100}%`;
+                    // Mettre à jour le label
+                    const label = gpaCursor.querySelector('span');
+                    if (label) label.textContent = newObj;
+                    // Mettre à jour l'input
+                    const objInput = document.getElementById('gpaObjectiveInput');
+                    if (objInput) objInput.value = newObj;
+                    // Mettre à jour couleurs en temps réel
+                    updateGpaObjectiveDisplay(parseFloat(averageGPA) || 0, newObj);
+                });
+                document.addEventListener('mouseup', () => {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    gpaCursor.style.cursor = 'grab';
+                    // Sauvegarder la valeur finale
+                    const objInput = document.getElementById('gpaObjectiveInput');
+                    if (objInput) {
+                        try { localStorage.setItem('igsGpaObjective', objInput.value); } catch (e) { }
+                    }
+                });
+            }
 
             // Ne pas afficher ni récupérer les absences sur la page des notes.
 
@@ -675,11 +736,11 @@
         try {
             const noteElement = table.querySelector('tr:last-child td:last-child');
             if (!noteElement) return false;
-            const raw = noteElement.textContent || '';
-            const txt = raw.trim();
+            // Utiliser dataset.originalText si disponible (évite la pollution DOM)
+            const txt = (noteElement.dataset.originalText || noteElement.textContent || '').trim();
             if (!txt || txt === '-') return false;
-            // Sometimes innerHTML contains appended '(Validé)' labels; strip parentheses parts
-            const normalized = txt.split('\n')[0].split('(')[0].trim();
+            // Nettoyage heuristique au cas où
+            const normalized = txt.split('\n')[0].split('(')[0].replace('➕', '').trim();
             return normalized !== '' && normalized !== '-';
         } catch (e) { return false; }
     }
@@ -1186,17 +1247,35 @@
     function updateGpaObjectiveDisplay(currentGPA, objective) {
         const statusDisplay = document.getElementById('gpaStatusDisplay');
         const progressBar = document.getElementById('gpaProgressBar');
+        const cursor = document.getElementById('gpaObjectiveCursor');
         if (!statusDisplay || !progressBar) return;
 
-        const gpaProgress = objective > 0 ? Math.min((currentGPA / objective) * 100, 100) : 0;
+        // Échelle fixe 0-4
+        const gpaProgress = Math.min((currentGPA / 4) * 100, 100);
+        const objectivePosition = Math.min((objective / 4) * 100, 100);
         const gpaDiff = (currentGPA - objective).toFixed(2);
         const gpaStatus = gpaDiff >= 0 ? `✅ +${gpaDiff}` : `⚠️ ${gpaDiff}`;
-        const progressColor = gpaDiff >= 0 ? '#28a745' : (gpaDiff >= -0.5 ? '#ffc107' : '#dc3545');
+
+        // Couleurs 4 paliers
+        const diff = currentGPA - objective;
+        let progressColor;
+        if (diff >= 0) progressColor = '#28a745';
+        else if (diff >= -0.2) progressColor = '#ffc107';
+        else if (diff >= -0.5) progressColor = '#fd7e14';
+        else progressColor = '#dc3545';
 
         statusDisplay.textContent = gpaStatus;
         statusDisplay.style.color = progressColor;
         progressBar.style.width = `${gpaProgress}%`;
         progressBar.style.background = progressColor;
+
+        // Déplacer le curseur
+        if (cursor) {
+            cursor.style.left = `${objectivePosition}%`;
+            // Mettre à jour le label du curseur
+            const label = cursor.querySelector('span');
+            if (label) label.textContent = objective;
+        }
     }
 
     // Fonction d'export PDF
