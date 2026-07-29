@@ -3,11 +3,15 @@
 
     // Theme application was removed per user request: the popup will manage preview only.
 
+    // Bareme GPA sur 4 utilise par l'ecole (tiers exacts : 3.67 / 3.33 / 2.67 ...).
+    // Verifie sur le bulletin : bloc "Sans unite d'enseignement" = B+, A, B+ -> affiche 3,55.
+    //   avec 3.33 : (3.33 + 4 + 3.33) / 3 = 3.5533 -> 3,55  (correspond)
+    //   avec 3.3  : (3.3  + 4 + 3.3 ) / 3 = 3.5333 -> 3,53  (ne correspond pas)
     const noteMapping = {
-        "A+": 4.0, "A": 4.0, "A-": 3.7,
-        "B+": 3.3, "B": 3.0, "B-": 2.7,
-        "C+": 2.3, "C": 2.0, "C-": 1.7,
-        "D+": 1.3, "D": 1.0, "D-": 0.7,
+        "A+": 4.0, "A": 4.0, "A-": 3.67,
+        "B+": 3.33, "B": 3.0, "B-": 2.67,
+        "C+": 2.33, "C": 2.0, "C-": 1.67,
+        "D+": 1.33, "D": 1.0, "D-": 0.67,
         "E": 0.0, "F": 0.0, "ABS": 0.0, "Disp": 0.0
     };
 
@@ -209,9 +213,15 @@
                             }
                         }
 
-                        if (gpa !== null && !isNaN(coefficient) && coefficient > 0) {
-                            totalGPA += gpa * coefficient;
-                            totalCoeff += coefficient;
+                        if (gpa !== null) {
+                            // La colonne "Coefficient" du portail reste utilisee. Si elle est
+                            // absente ou non numerique, la note pese 1 au lieu d'etre EXCLUE
+                            // silencieusement du calcul (elle etait deja comptee dans
+                            // totalModules : la moyenne et le "x/y validés" portaient donc sur
+                            // des ensembles differents).
+                            const poids = (!isNaN(coefficient) && coefficient > 0) ? coefficient : 1;
+                            totalGPA += gpa * poids;
+                            totalCoeff += poids;
                         }
                     } else {
                         // Si note vide, ajouter quand même le bouton pour simuler
@@ -1101,9 +1111,12 @@
                     const isEmptyNote = noteText === '' || noteText === '-';
                     if (!isEmptyNote) {
                         const gpa = convertNoteToGPA(noteText);
-                        if (gpa !== null && !isNaN(coefficient) && coefficient > 0) {
-                            totalGPA += gpa * coefficient;
-                            totalCoeff += coefficient;
+                        if (gpa !== null) {
+                            // Meme regle que la moyenne principale (cf calculateAndDisplaySummary) :
+                            // coefficient du portail conserve, repli a 1 s'il est absent/non numerique.
+                            const poids = (!isNaN(coefficient) && coefficient > 0) ? coefficient : 1;
+                            totalGPA += gpa * poids;
+                            totalCoeff += poids;
                         }
                     }
                 }
