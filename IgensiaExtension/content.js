@@ -132,8 +132,9 @@
 
         const tdVal = document.createElement('td');
         const val = document.createElement('strong');
-        // valeur CHIFFREE (format francais) suivie de la lettre correspondante
-        val.textContent = res.moyenne.toFixed(2).replace('.', ',') + ' (' + lettre + ')';
+        // Affichage en LETTRE uniquement (comme le reste du releve) ; le calcul, lui, se fait
+        // toujours sur la valeur numerique exacte de la moyenne.
+        val.textContent = lettre;
         const statut = document.createElement('span');
         statut.style.cssText = 'margin-left: 6px; font-weight: bold; color: ' + (valide ? 'green' : 'red') + ';';
         statut.textContent = valide ? (isEdited ? '(Validé - Simulé)' : '(Validé)')
@@ -1358,7 +1359,7 @@
             if (rows.length > 1 && r.moyenne !== null) {
                 notesData.push({
                     matiere: '', epreuve: 'Moyenne', evalDate: '', coeff: '',
-                    note: r.moyenne.toFixed(2).replace('.', ',') + ' (' + gpaToLettre(r.moyenne) + ')',
+                    note: gpaToLettre(r.moyenne),   // lettre seule, comme les autres notes
                     isMoyenne: true
                 });
             }
@@ -1420,7 +1421,7 @@
                     <td>${item.isMoyenne ? '<strong>Moyenne</strong>' : item.epreuve}</td>
                     <td>${item.evalDate}</td>
                     <td style="text-align: center;">${item.coeff}</td>
-                    <td class="note ${['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C'].includes(item.note.split(' ')[0]) ? 'note-pass' : 'note-fail'}">${item.isMoyenne ? '<strong>' + item.note + '</strong>' : item.note}</td>
+                    <td class="note ${(!item.note || item.note === '-') ? '' : (passingGrades.includes(item.note) ? 'note-pass' : 'note-fail')}">${item.isMoyenne ? '<strong>' + item.note + '</strong>' : item.note}</td>
                 </tr>
             `).join('')}
         </tbody>
