@@ -3,11 +3,15 @@
 
     // Theme application was removed per user request: the popup will manage preview only.
 
+    // Bareme GPA sur 4 utilise par l'ecole (tiers exacts : 3.67 / 3.33 / 2.67 ...).
+    // Verifie sur le bulletin : bloc "Sans unite d'enseignement" = B+, A, B+ -> affiche 3,55.
+    //   avec 3.33 : (3.33 + 4 + 3.33) / 3 = 3.5533 -> 3,55  (correspond)
+    //   avec 3.3  : (3.3  + 4 + 3.3 ) / 3 = 3.5333 -> 3,53  (ne correspond pas)
     const noteMapping = {
-        "A+": 4.0, "A": 4.0, "A-": 3.7,
-        "B+": 3.3, "B": 3.0, "B-": 2.7,
-        "C+": 2.3, "C": 2.0, "C-": 1.7,
-        "D+": 1.3, "D": 1.0, "D-": 0.7,
+        "A+": 4.0, "A": 4.0, "A-": 3.67,
+        "B+": 3.33, "B": 3.0, "B-": 2.67,
+        "C+": 2.33, "C": 2.0, "C-": 1.67,
+        "D+": 1.33, "D": 1.0, "D-": 0.67,
         "E": 0.0, "F": 0.0, "ABS": 0.0, "Disp": 0.0
     };
 
@@ -41,13 +45,115 @@
         return passingGrades.includes(noteText.trim());
     }
 
+    // --- Matieres a PLUSIEURS epreuves -------------------------------------------------
+    // Chaque .table-notes = une MATIERE ; chaque ligne de donnees = une EPREUVE (Ecrit, Oral,
+    // Controle Continu, TP...). L'ecole calcule : note de la matiere = moyenne des epreuves
+    // ponderee par leur coefficient, puis moyenne generale = moyenne PLATE des matieres.
+    // Avant, seule la DERNIERE epreuve etait lue ('tr:last-child'), ce qui faussait toute
+    // matiere ayant plusieurs notes (verifie sur le bulletin : IMDC260 B/A-/A -> 3,56 et non A,
+    // IAUX262 A-/A -> 3,83 et non A ; avec la correction la moyenne generale tombe sur 3,48).
+
+    // Paliers du bareme, du plus haut au plus bas (la lettre affichee = palier inferieur atteint)
+    const PALIERS = [["A", 4.0], ["A-", 3.67], ["B+", 3.33], ["B", 3.0], ["B-", 2.67],
+                     ["C+", 2.33], ["C", 2.0], ["C-", 1.67], ["D+", 1.33], ["D", 1.0],
+                     ["D-", 0.67], ["F", 0.0]];
+
+    function gpaToLettre(valeur) {
+        for (let i = 0; i < PALIERS.length; i++) {
+            if (valeur + 1e-9 >= PALIERS[i][1]) return PALIERS[i][0];
+        }
+        return 'F';
+    }
+
+    // Lignes de donnees d'une matiere (= ses epreuves) : les <tr> qui contiennent des <td>.
+    // La ligne "Moyenne" que NOUS ajoutons est exclue, sinon elle se recompterait elle-meme.
+    function getEpreuveRows(table) {
+        return Array.from(table.querySelectorAll('tr')).filter(tr =>
+            tr.querySelector('td') && !tr.classList.contains('igensia-moyenne-matiere'));
+    }
+
+    // Lit la note d'une cellule en ignorant ce que l'extension y a deja injecte
+    function readNoteCell(cell) {
+        if (!cell) return '';
+        if (cell.dataset && cell.dataset.originalText) return cell.dataset.originalText;
+        let raw = (cell.textContent || '').split('\n')[0].trim();
+        if (raw.includes('(')) raw = raw.split('(')[0].trim();
+        raw = raw.replace('➕', '').replace('✏️', '').trim();
+        if (cell.dataset) cell.dataset.originalText = raw;
+        return raw;
+    }
+
+    // Moyenne d'une matiere. Les epreuves notees '-' (pas encore evaluees) sont IGNOREES :
+    // elles ne valent pas 0. moyenne = null si aucune note n'est encore saisie.
+    function computeMoyenneMatiere(table, tableIndex) {
+        const rows = getEpreuveRows(table);
+        let somme = 0, poids = 0, nbNotes = 0, lastCell = null, lastCoeff = 1, lastNote = '';
+        rows.forEach((tr, rowIdx) => {
+            const tds = tr.querySelectorAll('td');
+            if (!tds.length) return;
+            const cell = tds[tds.length - 1];
+            let coeff = tds.length >= 3 ? parseFloat(tds[2].textContent.trim()) : NaN;
+            if (isNaN(coeff) || coeff <= 0) coeff = 1;
+            let note = readNoteCell(cell);
+            // Simulation : CHAQUE epreuve est editable, cle = "indexTable:indexLigne"
+            const key = tableIndex + ':' + rowIdx;
+            if (editedGrades.hasOwnProperty(key)) note = editedGrades[key].newGrade;
+            if (rowIdx === rows.length - 1) { lastCell = cell; lastCoeff = coeff; lastNote = note; }
+            if (!note || note === '-') return;
+            const gpa = convertNoteToGPA(note);
+            if (gpa === null) return;
+            somme += gpa * coeff; poids += coeff; nbNotes++;
+        });
+        return { moyenne: poids > 0 ? somme / poids : null, nbNotes, lastCell, lastCoeff, lastNote };
+    }
+
+    // Ligne "Moyenne" ajoutee en bas d'une matiere UNIQUEMENT si elle a PLUSIEURS notes.
+    // C'est la SEULE ligne qui porte le statut Valide / Non valide (aucun statut a cote des
+    // notes d'epreuve, qui ne veulent rien dire prises isolement).
+    function upsertLigneMoyenne(table, res, isEdited) {
+        let tr = table.querySelector('tr.igensia-moyenne-matiere');
+        if (res.nbNotes < 2 || res.moyenne === null) { if (tr) tr.remove(); return; }
+
+        const rows = getEpreuveRows(table);
+        const nbCols = rows.length ? rows[0].querySelectorAll('td').length : 4;
+        const lettre = gpaToLettre(res.moyenne);
+        const valide = passingGrades.includes(lettre);
+
+        if (!tr) {
+            tr = document.createElement('tr');
+            tr.className = 'igensia-moyenne-matiere';
+            (rows.length ? rows[rows.length - 1].parentNode : table).appendChild(tr);
+        }
+        tr.innerHTML = '';
+
+        const tdLabel = document.createElement('td');
+        tdLabel.colSpan = Math.max(1, nbCols - 1);
+        tdLabel.innerHTML = '<strong>Moyenne</strong>';
+
+        const tdVal = document.createElement('td');
+        const val = document.createElement('strong');
+        // Affichage en LETTRE uniquement (comme le reste du releve) ; le calcul, lui, se fait
+        // toujours sur la valeur numerique exacte de la moyenne.
+        val.textContent = lettre;
+        const statut = document.createElement('span');
+        statut.style.cssText = 'margin-left: 6px; font-weight: bold; color: ' + (valide ? 'green' : 'red') + ';';
+        statut.textContent = valide ? (isEdited ? '(Validé - Simulé)' : '(Validé)')
+                                    : (isEdited ? '(Non validé - Simulé)' : '(Non validé)');
+        tdVal.appendChild(val);
+        tdVal.appendChild(statut);
+
+        tr.appendChild(tdLabel);
+        tr.appendChild(tdVal);
+    }
+
     let originalTablesOrder = []; // Pour stocker l'ordre original des tables
 
     // Variable pour stocker les notes simulées (effacées au refresh)
     let simulatedGrades = []; // { moduleName, grade, coefficient, isNew: true }
 
     // Variable pour stocker les notes existantes éditées (effacées au refresh)
-    let editedGrades = {}; // { tableIndex: { originalGrade, newGrade, moduleName, coefficient } }
+    let editedGrades = {}; // { "indexTable:indexLigne": { originalGrade, newGrade, moduleName, coefficient } }
+                           // une entree PAR EPREUVE (une matiere peut en avoir plusieurs)
 
     // Avertissement avant de quitter si des notes simulées ou éditées existent
     window.addEventListener('beforeunload', (e) => {
@@ -95,139 +201,100 @@
             // Comportement original pour les notes
             // Réinitialiser originalTablesOrder si c'est la première fois ou si les tables ont changé
             if (originalTablesOrder.length === 0 || originalTablesOrder.length !== tables.length) {
-                originalTablesOrder = Array.from(tables).map(table => {
-                    const noteElement = table.querySelector('tr:last-child td:last-child');
-                    const noteText = noteElement ? noteElement.textContent.trim() : '';
-                    return { table, validated: isModuleValidated(noteText) };
+                originalTablesOrder = Array.from(tables).map((table, idx) => {
+                    // validation basee sur la MOYENNE de la matiere, pas sur sa derniere epreuve
+                    const r = computeMoyenneMatiere(table, idx);
+                    return { table, validated: r.moyenne !== null && passingGrades.includes(gpaToLettre(r.moyenne)) };
                 });
             }
 
             tables.forEach((table, tableIndex) => {
-                const noteElement = table.querySelector('tr:last-child td:last-child');
-                const coeffElement = table.querySelector('tr:last-child td:nth-child(3)');
                 const evalNameElement = table.querySelector('th.col-5');
+                const moduleName = evalNameElement ? evalNameElement.textContent.trim() : `Module ${tableIndex + 1}`;
 
-                if (noteElement && coeffElement) {
-                    // Utiliser le texte original sauvegardé ou le récupérer et le sauvegarder
-                    let noteText;
-                    if (noteElement.dataset.originalText) {
-                        noteText = noteElement.dataset.originalText;
-                    } else {
-                        const noteTextRaw = noteElement.textContent.trim();
-                        // Si le texte contient déjà nos ajouts (pollution), on essaie de nettoyer
-                        // Heuristique: prendre ce qui est avant '(' ou '➕' ou '✏️'
-                        let rawClean = noteTextRaw.split('\n')[0].trim();
-                        if (rawClean.includes('(')) rawClean = rawClean.split('(')[0].trim();
-                        if (rawClean.includes('➕')) rawClean = rawClean.replace('➕', '').trim();
-                        // Note: si la note est juste '-', on garde '-'
-                        noteText = rawClean;
+                const res = computeMoyenneMatiere(table, tableIndex);
+                const rows = getEpreuveRows(table);
+                const multi = rows.length > 1;   // matiere a PLUSIEURS epreuves
 
-                        // Sauvegarder pour la prochaine fois
-                        noteElement.dataset.originalText = noteText;
+                // --- chaque epreuve : sa note + son bouton de simulation ---
+                rows.forEach((tr, rowIdx) => {
+                    const tds = tr.querySelectorAll('td');
+                    if (!tds.length) return;
+                    const cell = tds[tds.length - 1];
+                    let coeff = tds.length >= 3 ? parseFloat(tds[2].textContent.trim()) : NaN;
+                    if (isNaN(coeff) || coeff <= 0) coeff = 1;
+
+                    const key = tableIndex + ':' + rowIdx;
+                    const noteOrig = readNoteCell(cell);
+                    const isEdited = editedGrades.hasOwnProperty(key);
+                    const displayNote = isEdited ? editedGrades[key].newGrade : noteOrig;
+                    const isEmptyNote = !displayNote || displayNote === '-';
+
+                    if (!cell.querySelector('.note-display')) {
+                        const noteDisplay = document.createElement('span');
+                        noteDisplay.className = 'note-display';
+
+                        const statusSpan = document.createElement('span');
+                        statusSpan.className = 'note-status-span';
+
+                        const editBtn = document.createElement('button');
+                        editBtn.className = 'edit-note-btn';
+                        editBtn.style.cssText = 'display: none; margin-left: 8px; background: none; border: none; cursor: pointer; font-size: 14px; opacity: 0.7; transition: opacity 0.2s;';
+                        editBtn.addEventListener('mouseenter', () => editBtn.style.opacity = '1');
+                        editBtn.addEventListener('mouseleave', () => editBtn.style.opacity = '0.7');
+
+                        cell.innerHTML = '';
+                        cell.appendChild(noteDisplay);
+                        cell.appendChild(statusSpan);
+                        cell.appendChild(editBtn);
                     }
-                    const coefficient = parseFloat(coeffElement.textContent.trim());
-                    const moduleName = evalNameElement ? evalNameElement.textContent.trim() : `Module ${tableIndex + 1}`;
 
-                    // Vérifier si cette note a été éditée
-                    const isEdited = editedGrades.hasOwnProperty(tableIndex);
-                    const displayNote = isEdited ? editedGrades[tableIndex].newGrade : noteText;
-                    const gpa = convertNoteToGPA(displayNote);
+                    const nd = cell.querySelector('.note-display');
+                    nd.textContent = displayNote || '-';
+                    if (isEdited) {
+                        nd.style.cssText = 'color: #667eea; font-weight: bold;';
+                        nd.title = `Note originale: ${noteOrig || '-'}`;
+                    } else {
+                        nd.style.cssText = '';
+                        nd.removeAttribute('title');
+                    }
 
-                    // Si la note est '-' ou vide, considérer qu'elle n'est pas encore saisie
-                    const isEmptyNote = displayNote === '' || displayNote === '-';
+                    const btn = cell.querySelector('.edit-note-btn');
+                    btn.innerHTML = isEmptyNote ? '➕' : '✏️';
+                    btn.title = isEmptyNote ? 'Ajouter une note simulée' : 'Modifier cette note (simulation)';
+                    btn.dataset.tableIndex = tableIndex;
+                    btn.dataset.rowIndex = rowIdx;
+                    btn.dataset.moduleName = moduleName;
+                    btn.dataset.originalNote = noteOrig || '-';
+                    btn.dataset.coefficient = coeff;
 
-                    if (!isEmptyNote) {
-                        totalModules++;
-                        // Éviter d'ajouter le span si déjà présent
-                        if (!noteElement.querySelector('.note-status-span')) {
-                            // Ajouter le bouton d'édition
-                            const editBtn = document.createElement('button');
-                            editBtn.className = 'edit-note-btn';
-                            editBtn.innerHTML = '✏️';
-                            editBtn.title = 'Modifier cette note (simulation)';
-                            editBtn.style.cssText = 'display: none; margin-left: 8px; background: none; border: none; cursor: pointer; font-size: 14px; opacity: 0.7; transition: opacity 0.2s;';
-                            editBtn.dataset.tableIndex = tableIndex;
-                            editBtn.dataset.moduleName = moduleName;
-                            editBtn.dataset.originalNote = noteText;
-                            editBtn.dataset.coefficient = coefficient;
-
-                            editBtn.addEventListener('mouseenter', () => editBtn.style.opacity = '1');
-                            editBtn.addEventListener('mouseleave', () => editBtn.style.opacity = '0.7');
-
-                            // Créer le conteneur pour la note et le statut
-                            const noteDisplay = document.createElement('span');
-                            noteDisplay.className = 'note-display';
-                            noteDisplay.textContent = displayNote;
-                            if (isEdited) {
-                                noteDisplay.style.cssText = 'color: #667eea; font-weight: bold;';
-                                noteDisplay.title = `Note originale: ${noteText}`;
-                            }
-
-                            const statusSpan = document.createElement('span');
-                            statusSpan.className = 'note-status-span';
-                            if (isModuleValidated(displayNote)) {
-                                validatedModulesCount++;
-                                statusSpan.style.cssText = 'color: green; font-weight: bold; margin-left: 5px;';
-                                statusSpan.textContent = isEdited ? '(Validé - Simulé)' : '(Validé)';
-                            } else {
-                                statusSpan.style.cssText = 'color: red; font-weight: bold; margin-left: 5px;';
-                                statusSpan.textContent = isEdited ? '(Non validé - Simulé)' : '(Non validé)';
-                            }
-
-                            // Remplacer le contenu de la cellule
-                            noteElement.innerHTML = '';
-                            noteElement.appendChild(noteDisplay);
-                            noteElement.appendChild(statusSpan);
-                            noteElement.appendChild(editBtn);
+                    // Statut a cote de la note UNIQUEMENT si la matiere n'a qu'une seule epreuve
+                    // (la note EST alors la moyenne). Sinon il est porte par la ligne "Moyenne".
+                    const st = cell.querySelector('.note-status-span');
+                    if (st) {
+                        if (multi || isEmptyNote) {
+                            st.textContent = '';
+                            st.removeAttribute('style');
+                        } else if (isModuleValidated(displayNote)) {
+                            st.style.cssText = 'color: green; font-weight: bold; margin-left: 5px;';
+                            st.textContent = isEdited ? '(Validé - Simulé)' : '(Validé)';
                         } else {
-                            // Mettre à jour les éléments existants
-                            const existingNoteDisplay = noteElement.querySelector('.note-display');
-                            const existingStatus = noteElement.querySelector('.note-status-span');
-
-                            if (existingNoteDisplay) {
-                                existingNoteDisplay.textContent = displayNote;
-                                if (isEdited) {
-                                    existingNoteDisplay.style.cssText = 'color: #667eea; font-weight: bold;';
-                                    existingNoteDisplay.title = `Note originale: ${noteText}`;
-                                } else {
-                                    existingNoteDisplay.style.cssText = '';
-                                    existingNoteDisplay.removeAttribute('title');
-                                }
-                            }
-
-                            if (existingStatus) {
-                                if (isModuleValidated(displayNote)) {
-                                    validatedModulesCount++;
-                                    existingStatus.style.cssText = 'color: green; font-weight: bold; margin-left: 5px;';
-                                    existingStatus.textContent = isEdited ? '(Validé - Simulé)' : '(Validé)';
-                                } else {
-                                    existingStatus.style.cssText = 'color: red; font-weight: bold; margin-left: 5px;';
-                                    existingStatus.textContent = isEdited ? '(Non validé - Simulé)' : '(Non validé)';
-                                }
-                            } else {
-                                if (isModuleValidated(displayNote)) validatedModulesCount++;
-                            }
-                        }
-
-                        if (gpa !== null && !isNaN(coefficient) && coefficient > 0) {
-                            totalGPA += gpa * coefficient;
-                            totalCoeff += coefficient;
-                        }
-                    } else {
-                        // Si note vide, ajouter quand même le bouton pour simuler
-                        if (!noteElement.querySelector('.edit-note-btn')) {
-                            const editBtn = document.createElement('button');
-                            editBtn.className = 'edit-note-btn';
-                            editBtn.innerHTML = '➕';
-                            editBtn.title = 'Ajouter une note simulée';
-                            editBtn.style.cssText = 'display: none; margin-left: 8px; background: none; border: none; cursor: pointer; font-size: 14px; opacity: 0.7;';
-                            editBtn.dataset.tableIndex = tableIndex;
-                            editBtn.dataset.moduleName = moduleName;
-                            editBtn.dataset.originalNote = '-';
-                            editBtn.dataset.coefficient = coefficient || 1;
-                            noteElement.appendChild(editBtn);
+                            st.style.cssText = 'color: red; font-weight: bold; margin-left: 5px;';
+                            st.textContent = isEdited ? '(Non validé - Simulé)' : '(Non validé)';
                         }
                     }
+                });
+
+                // --- ligne "Moyenne" (+ statut) : uniquement si plusieurs epreuves ---
+                const matiereEditee = Object.keys(editedGrades).some(k => k.split(':')[0] === String(tableIndex));
+                upsertLigneMoyenne(table, res, matiereEditee);
+
+                // --- moyenne generale = moyenne PLATE des matieres notees ---
+                if (res.moyenne !== null) {
+                    totalModules++;
+                    if (passingGrades.includes(gpaToLettre(res.moyenne))) validatedModulesCount++;
+                    totalGPA += res.moyenne;
+                    totalCoeff += 1;
                 }
             });
 
@@ -734,14 +801,8 @@
     // Returns true if the provided table contains a real note (not empty and not '-')
     function tableHasNote(table) {
         try {
-            const noteElement = table.querySelector('tr:last-child td:last-child');
-            if (!noteElement) return false;
-            // Utiliser dataset.originalText si disponible (évite la pollution DOM)
-            const txt = (noteElement.dataset.originalText || noteElement.textContent || '').trim();
-            if (!txt || txt === '-') return false;
-            // Nettoyage heuristique au cas où
-            const normalized = txt.split('\n')[0].split('(')[0].replace('➕', '').trim();
-            return normalized !== '' && normalized !== '-';
+            // vrai des qu'AU MOINS UNE epreuve de la matiere est notee (les '-' ne comptent pas)
+            return computeMoyenneMatiere(table, -1).nbNotes > 0;
         } catch (e) { return false; }
     }
 
@@ -808,32 +869,23 @@
         // Exclure A+ et F du graphique
         const allNotes = allNotesRaw.filter(note => note !== 'A+' && note !== 'F');
 
-        tables.forEach(table => {
-            const noteElement = table.querySelector('tr:last-child td:last-child');
-            if (noteElement) {
-                const rawNoteText = noteElement.textContent; // Log the raw text
-                // Extraire la note réelle avant le statut de validation
-                const noteMatch = rawNoteText.match(/^([A-D][+-]?|E|F|ABS|Disp)/);
-                let noteTextForMapping = '';
-                if (noteMatch && noteMatch[1]) {
-                    noteTextForMapping = noteMatch[1].trim();
-                } else {
-                    noteTextForMapping = rawNoteText.trim(); // Fallback au cas où le format change
-                }
-
-                console.log(`Raw note text: '${rawNoteText}', Extracted note for mapping: '${noteTextForMapping}'`); // Debug log
-                // Ignorer les notes vides ou '-' (non saisies)
-                const normalized = noteTextForMapping.trim();
-                if (!normalized || normalized === '-') {
-                    return; // ne pas compter ni logguer
-                }
-                // Vérifier si la note est dans noteMapping avant de l'ajouter
+        // Repartition sur les notes UNITAIRES (chaque epreuve compte pour elle-meme).
+        // Les moyennes de matiere ne sont PAS comptees ici : ce sont des valeurs calculees,
+        // pas des notes obtenues.
+        tables.forEach((table, tableIndex) => {
+            getEpreuveRows(table).forEach((tr, rowIdx) => {
+                const tds = tr.querySelectorAll('td');
+                if (!tds.length) return;
+                const key = tableIndex + ':' + rowIdx;
+                let normalized = readNoteCell(tds[tds.length - 1]);
+                if (editedGrades.hasOwnProperty(key)) normalized = editedGrades[key].newGrade;
+                if (!normalized || normalized === '-') return;   // pas encore notee
                 if (noteMapping.hasOwnProperty(normalized)) {
                     noteCounts[normalized] = (noteCounts[normalized] || 0) + 1;
                 } else {
                     console.warn(`Note '${normalized}' not found in noteMapping.`);
                 }
-            }
+            });
         });
 
         const chartDiv = document.getElementById('notesChart');
@@ -1087,25 +1139,14 @@
             let totalGPA = 0;
             let totalCoeff = 0;
 
-            // Notes réelles
+            // Notes reelles : meme regle que la moyenne principale (cf calculateAndDisplaySummary)
+            // = moyenne PLATE des matieres, chaque matiere valant la moyenne de ses epreuves.
             const tables = document.querySelectorAll('.table-notes');
-            tables.forEach(table => {
-                const noteElement = table.querySelector('tr:last-child td:last-child');
-                const coeffElement = table.querySelector('tr:last-child td:nth-child(3)');
-
-                if (noteElement && coeffElement) {
-                    const noteTextRaw = noteElement.textContent.trim();
-                    const noteText = noteTextRaw.split('\n')[0].split('(')[0].trim();
-                    const coefficient = parseFloat(coeffElement.textContent.trim());
-
-                    const isEmptyNote = noteText === '' || noteText === '-';
-                    if (!isEmptyNote) {
-                        const gpa = convertNoteToGPA(noteText);
-                        if (gpa !== null && !isNaN(coefficient) && coefficient > 0) {
-                            totalGPA += gpa * coefficient;
-                            totalCoeff += coefficient;
-                        }
-                    }
+            tables.forEach((table, tableIndex) => {
+                const r = computeMoyenneMatiere(table, tableIndex);
+                if (r.moyenne !== null) {
+                    totalGPA += r.moyenne;
+                    totalCoeff += 1;
                 }
             });
 
@@ -1179,19 +1220,22 @@
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const tableIndex = parseInt(btn.dataset.tableIndex, 10);
+                const rowIndex = parseInt(btn.dataset.rowIndex || '0', 10);
+                const editKey = tableIndex + ':' + rowIndex;   // une entree par EPREUVE
                 const moduleName = btn.dataset.moduleName;
                 const originalNote = btn.dataset.originalNote;
                 const coefficient = parseFloat(btn.dataset.coefficient);
 
                 const modal = document.getElementById('editNoteModal');
-                document.getElementById('editNoteModuleName').textContent = moduleName;
+                const libelleEpreuve = (btn.closest('tr') && btn.closest('tr').querySelector('td')) ? btn.closest('tr').querySelector('td').textContent.trim() : '';
+                document.getElementById('editNoteModuleName').textContent = libelleEpreuve ? (moduleName + '  --  ' + libelleEpreuve) : moduleName;
                 document.getElementById('editNoteOriginal').textContent = originalNote === '-' ? 'Aucune' : originalNote;
 
                 const select = document.getElementById('editNoteSelect');
                 const resetBtn = document.getElementById('editNoteReset');
 
                 // Sélectionner la note actuelle (éditée ou originale)
-                const currentEdit = editedGrades[tableIndex];
+                const currentEdit = editedGrades[editKey];
                 if (currentEdit) {
                     select.value = currentEdit.newGrade;
                     resetBtn.style.display = 'inline-block';
@@ -1210,7 +1254,7 @@
                 const saveBtn = document.getElementById('editNoteSave');
                 saveBtn.onclick = () => {
                     const newGrade = select.value;
-                    editedGrades[tableIndex] = {
+                    editedGrades[editKey] = {
                         originalGrade: originalNote,
                         newGrade: newGrade,
                         moduleName: moduleName,
@@ -1223,7 +1267,7 @@
 
                 // Configure le bouton de réinitialisation
                 resetBtn.onclick = () => {
-                    delete editedGrades[tableIndex];
+                    delete editedGrades[editKey];
                     modal.style.display = 'none';
                     refreshNotesDisplay();
                 };
@@ -1291,18 +1335,34 @@
         // Collecter les données des notes
         let notesData = [];
         tables.forEach((table, index) => {
-            const evalName = table.querySelector('th.col-5')?.textContent?.trim() || `Évaluation ${index + 1}`;
-            const noteElement = table.querySelector('tr:last-child td:last-child');
-            const coeffElement = table.querySelector('tr:last-child td:nth-child(3)');
-            const dateElement = table.querySelector('tr:nth-child(2) td:nth-child(2)');
+            const evalName = table.querySelector('th.col-5')?.textContent?.trim() || `Matière ${index + 1}`;
+            const rows = getEpreuveRows(table);
+            const r = computeMoyenneMatiere(table, index);
 
-            let noteText = noteElement?.textContent?.trim()?.split('\n')[0]?.trim() || '-';
-            const noteMatch = noteText.match(/^([A-D][+-]?|E|F|ABS|Disp|-)/);
-            const note = noteMatch ? noteMatch[1] : '-';
-            const coeff = coeffElement?.textContent?.trim() || '1';
-            const evalDate = dateElement?.textContent?.trim() || '';
-
-            notesData.push({ evalName, note, coeff, evalDate });
+            // On exporte TOUTES les epreuves de la matiere, comme sur le site, puis la ligne
+            // "Moyenne" (uniquement si la matiere a plusieurs epreuves).
+            rows.forEach((tr, rowIdx) => {
+                const tds = tr.querySelectorAll('td');
+                if (!tds.length) return;
+                const key = index + ':' + rowIdx;
+                let note = readNoteCell(tds[tds.length - 1]);
+                if (editedGrades.hasOwnProperty(key)) note = editedGrades[key].newGrade;
+                notesData.push({
+                    matiere: rowIdx === 0 ? evalName : '',
+                    epreuve: tds[0] ? tds[0].textContent.trim() : '',
+                    evalDate: tds.length >= 2 ? tds[1].textContent.trim() : '',
+                    coeff: tds.length >= 3 ? tds[2].textContent.trim() : '1',
+                    note: note || '-',
+                    isMoyenne: false
+                });
+            });
+            if (rows.length > 1 && r.moyenne !== null) {
+                notesData.push({
+                    matiere: '', epreuve: 'Moyenne', evalDate: '', coeff: '',
+                    note: gpaToLettre(r.moyenne),   // lettre seule, comme les autres notes
+                    isMoyenne: true
+                });
+            }
         });
 
         // Créer le HTML pour l'impression
@@ -1326,6 +1386,7 @@
         th { background: #667eea; color: white; padding: 12px 8px; text-align: left; font-size: 12px; }
         td { padding: 10px 8px; border-bottom: 1px solid #eee; font-size: 12px; }
         tr:nth-child(even) { background: #f9f9f9; }
+        .ligne-moyenne td { background: #eef0fb; border-top: 1px solid #667eea; }
         .note { font-weight: bold; text-align: center; }
         .note-pass { color: #28a745; }
         .note-fail { color: #dc3545; }
@@ -1346,19 +1407,21 @@
     <table>
         <thead>
             <tr>
-                <th style="width: 50%">Évaluation</th>
-                <th style="width: 20%">Date</th>
-                <th style="width: 15%">Coeff</th>
-                <th style="width: 15%">Note</th>
+                <th style="width: 34%">Matière</th>
+                <th style="width: 26%">Épreuve</th>
+                <th style="width: 16%">Date</th>
+                <th style="width: 10%">Coeff</th>
+                <th style="width: 14%">Note</th>
             </tr>
         </thead>
         <tbody>
             ${notesData.map(item => `
-                <tr>
-                    <td>${item.evalName}</td>
+                <tr${item.isMoyenne ? ' class="ligne-moyenne"' : ''}>
+                    <td>${item.matiere}</td>
+                    <td>${item.isMoyenne ? '<strong>Moyenne</strong>' : item.epreuve}</td>
                     <td>${item.evalDate}</td>
                     <td style="text-align: center;">${item.coeff}</td>
-                    <td class="note ${['A', 'A-', 'B+', 'B', 'B-', 'C+', 'C'].includes(item.note) ? 'note-pass' : 'note-fail'}">${item.note}</td>
+                    <td class="note ${(!item.note || item.note === '-') ? '' : (passingGrades.includes(item.note) ? 'note-pass' : 'note-fail')}">${item.isMoyenne ? '<strong>' + item.note + '</strong>' : item.note}</td>
                 </tr>
             `).join('')}
         </tbody>
