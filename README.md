@@ -95,7 +95,7 @@ Ce README explique comment télécharger le projet et l'importer dans un navigat
 
 Option 1 — Cloner avec Git (recommandé si vous voulez suivre les mises à jour) :
 
-	git clone https://github.com/quelquun667/Igensia-Extension.git
+	git clone https://github.com/quelquun667/Igensia-Enhancer.git
 
 Option 2 — Télécharger le ZIP depuis GitHub :
 

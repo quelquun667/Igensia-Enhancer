@@ -17,8 +17,8 @@
     "https://ws-edt-igs.wigorservices.net/*",
     "https://eabsences-igs.wigorservices.net/*",
     "https://cas-p.wigorservices.net/*",
-    "https://api.github.com/repos/quelquun667/Igensia-Extension/releases/*",
-    "https://raw.githubusercontent.com/quelquun667/Igensia-Extension/*"
+    "https://api.github.com/repos/quelquun667/Igensia-Enhancer/releases/*",
+    "https://raw.githubusercontent.com/quelquun667/Igensia-Enhancer/*"
   ],
   "content_scripts": [
     {

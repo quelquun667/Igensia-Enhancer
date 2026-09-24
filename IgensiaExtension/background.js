@@ -301,11 +301,11 @@ chrome.windows.onFocusChanged.addListener(() => queueTrackingRefresh());
 // -------------------------
 // GitHub update checker
 // -------------------------
-const GITHUB_API_RELEASES = 'https://api.github.com/repos/quelquun667/Igensia-Extension/releases/latest';
+const GITHUB_API_RELEASES = 'https://api.github.com/repos/quelquun667/Igensia-Enhancer/releases/latest';
 const STORAGE_KEY = 'igs_last_release';
 
 // Correct raw URL for the manifest inside the repository path as provided by the user
-const RAW_MANIFEST_URL = 'https://raw.githubusercontent.com/quelquun667/Igensia-Extension/refs/heads/main/IgensiaExtension/manifest.json';
+const RAW_MANIFEST_URL = 'https://raw.githubusercontent.com/quelquun667/Igensia-Enhancer/refs/heads/main/IgensiaExtension/manifest.json';
 const STORAGE_MANIFEST_KEY = 'igs_remote_manifest_version';
 
 async function checkForGithubRelease() {
@@ -610,7 +610,7 @@ chrome.runtime.onStartup.addListener(initBackgroundTasks);
 // click on notification opens the appropriate page
 chrome.notifications.onClicked.addListener(id => {
     if (id === 'igs_update_available') {
-        chrome.tabs.create({ url: 'https://github.com/quelquun667/Igensia-Extension/releases/latest' });
+        chrome.tabs.create({ url: 'https://github.com/quelquun667/Igensia-Enhancer/releases/latest' });
     }
     if (id === 'igs_new_grade') {
         chrome.storage.local.get(['igs_notes_url'], res => {

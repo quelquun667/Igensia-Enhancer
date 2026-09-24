@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const updateStatus = document.getElementById('update-status');
     const updateStatusText = document.getElementById('update-status-text');
     const updateActions = document.getElementById('update-actions');
-    const REPO_URL = 'https://github.com/quelquun667/Igensia-Extension';
+    const REPO_URL = 'https://github.com/quelquun667/Igensia-Enhancer';
 
     document.getElementById('version-display').textContent = `v${chrome.runtime.getManifest().version}`;
 
