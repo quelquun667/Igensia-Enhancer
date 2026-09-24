@@ -1,5 +1,9 @@
-# Igensia Extension
- 
+<p align="center">
+	<img src="img/banner.png" alt="Igensia Enhancer : ton prochain cours, tes dernières notes et tes devoirs, en un clic" width="100%" />
+</p>
+
+# Igensia Enhancer
+
 ## Version: 2.6.0
 
 Extension de navigateur (Chrome, Edge, Firefox) pour MonCampus Igensia : ton prochain cours et tes dernières notes en un clic, un suivi de devoirs par matière, et des outils en plus sur les pages de notes et d'absences.
@@ -9,11 +13,10 @@ Le code de l'extension se trouve dans le dossier `IgensiaExtension`.
 ## Démo rapide
 
 <p align="center">
-	<img src="img/popup-demo.png" alt="Popup : cours en cours, prochain cours et dernières notes" width="30%" />
-	<img src="img/devoirs-demo.png" alt="Mes devoirs, thème sombre" width="30%" />
-	<img src="img/settings-demo.png" alt="Paramètres : thème et mises à jour" width="30%" />
+	<img src="img/popup-demo.png" alt="Popup : cours en cours, prochain cours et dernières notes" width="40%" />
+	<img src="img/devoirs-demo.png" alt="Mes devoirs, thème sombre" width="40%" />
 	<br/>
-	<em>Popup de l'extension : Accueil • Mes devoirs (thème sombre) • Paramètres</em>
+	<em>Popup de l'extension : Accueil • Mes devoirs (thème sombre)</em>
 </p>
 
 <p align="center">
