@@ -4,7 +4,7 @@
 
 # Igensia Enhancer
 
-## Version: 2.6.0
+## Version: 2.6.1
 
 Extension de navigateur (Chrome, Edge, Firefox) pour MonCampus Igensia : ton prochain cours et tes dernières notes en un clic, un suivi de devoirs par matière, et des outils en plus sur les pages de notes et d'absences.
 
@@ -35,7 +35,7 @@ Ce README explique comment télécharger le projet et l'importer dans un navigat
 - Popup
 	- Cours en cours (avec avancement) et prochain cours : horaires, salle ou distanciel, prof
 	- Dernières notes, avec l'étiquette « Nouveau » pour celles pas encore vues
-	- Synchronisation automatique de l'emploi du temps et du relevé de l'année en cours (il suffit de les avoir ouverts une fois dans la session)
+	- Synchronisation automatique de l'emploi du temps et du relevé de l'année en cours (il suffit d'être connecté à MonCampus)
 
 - Mes Devoirs (dans le popup)
 	- Ajouter, modifier, cocher comme terminé et supprimer des devoirs
@@ -139,4 +139,4 @@ Important : le chargement temporaire n'est pas persistant — l'extension sera d
 - Erreur "Manifest is missing or unreadable" : vérifiez que vous avez sélectionné le dossier contenant `manifest.json`.
 - Permissions bloquées : relisez `manifest.json` et accordez les permissions demandées lors de l'installation.
 - Rafraîchir l'extension : après modification des fichiers, retournez dans la page d'extensions du navigateur et cliquez sur "Reload" / "Recharger".
-- Le popup affiche « Session expirée » : ouvrez une fois l'emploi du temps ou le relevé de notes depuis MonCampus pour renouveler la session, puis rouvrez le popup.
+- Le popup demande de se connecter ou affiche « Session expirée » : connectez-vous à MonCampus (ou ouvrez une fois le relevé de notes depuis MonCampus), puis rouvrez le popup.

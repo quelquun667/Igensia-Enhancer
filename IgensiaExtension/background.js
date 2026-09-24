@@ -66,11 +66,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         const rangeEnd = new Date(Math.max(...starts));
         rangeEnd.setHours(23, 59, 59, 999);
         const extra = { igs_edt_sync_error: null };
-        if (request.url) extra.igs_edt_url = request.url;
+        // Seul le lien signé (hashURL) permet de rouvrir l'EDT plus tard
+        if (request.url && /hashURL=/i.test(request.url)) extra.igs_edt_url = request.url;
         queueEdtStore(events, rangeStart, rangeEnd, extra).then(() => sendResponse({ ok: true }));
         return true;
     }
     // EDT : synchronisation demandée par le popup
+    // EDT : lien à ouvrir depuis le popup (bouton « Ouvrir l'EDT »)
+    if (request.action === 'get_edt_url') {
+        getEdtUrl().then(url => sendResponse({ ok: !!url, url }));
+        return true;
+    }
     if (request.action === 'sync_edt') {
         syncEdt({ force: !!request.force }).then(sendResponse);
         return true;
@@ -181,6 +187,53 @@ function queueEdtStore(...args) {
     return edtStoreQueue;
 }
 
+// Lien signé vers l'EDT : WebPsDyn.aspx?action=posEDTLMS&serverID=…&Tel=…&date=MM/DD/YYYY&hashURL=…
+// Il figure dans le menu de toutes les pages MonCampus (mémorisé par content.js). Le hashURL
+// ne dépend pas de la date : on remplace la date par celle du jour pour ouvrir la semaine en cours.
+const MONCAMPUS_HOME_URL = 'https://moncampus.igensia-education.fr/';
+
+function withTodayDate(url) {
+    const d = new Date();
+    const today = `${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}/${d.getFullYear()}`;
+    return url.replace(/([?&]date=)[^&]*/i, `$1${today}`);
+}
+
+async function getEdtUrl() {
+    const stored = await chrome.storage.local.get(['igs_edt_url']);
+    if (stored.igs_edt_url && /hashURL=/i.test(stored.igs_edt_url)) return withTodayDate(stored.igs_edt_url);
+
+    // Jamais vu : le chercher dans une page MonCampus (nécessite d'y être connecté)
+    try {
+        const resp = await fetch(MONCAMPUS_HOME_URL, { credentials: 'include', cache: 'no-store' });
+        if (!resp.ok) return null;
+        const match = (await resp.text()).match(/href="(https:\/\/ws-edt-igs\.wigorservices\.net\/WebPsDyn\.aspx\?[^"]*hashURL=[^"]*)"/i);
+        if (!match) return null;
+        const url = decodeEntities(match[1]);
+        await chrome.storage.local.set({ igs_edt_url: url });
+        return withTodayDate(url);
+    } catch (err) {
+        console.warn('EDT link lookup failed:', err);
+        return null;
+    }
+}
+
+// Liste des cours, ou null si la réponse n'est pas du JSON (redirection vers une page de connexion…)
+async function fetchEdtList(url) {
+    try {
+        const resp = await fetch(url, {
+            credentials: 'include',
+            cache: 'no-store',
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!resp.ok) return null;
+        const json = await resp.json();
+        const list = Array.isArray(json) ? json : (json && (json.Data || json.data));
+        return Array.isArray(list) ? list : null;
+    } catch {
+        return null;
+    }
+}
+
 async function syncEdt({ force = false } = {}) {
     try {
         const stored = await chrome.storage.local.get(['igs_edt_synced_at', 'igs_edt_cache_version']);
@@ -199,19 +252,18 @@ async function syncEdt({ force = false } = {}) {
         rangeEnd.setDate(rangeEnd.getDate() + EDT_SYNC_DAYS);
 
         const url = `${EDT_API_URL}?sort=&group=&filter=&dateDebut=${encodeURIComponent(rangeStart.toISOString())}&dateFin=${encodeURIComponent(rangeEnd.toISOString())}`;
-        const resp = await fetch(url, {
-            credentials: 'include',
-            cache: 'no-store',
-            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
-        });
-
-        let json = null;
-        try { json = resp.ok ? await resp.json() : null; } catch { json = null; }
-        const list = Array.isArray(json) ? json : (json && (json.Data || json.data));
-        if (!Array.isArray(list)) {
-            // Redirection vers une page de connexion, session expirée, etc.
+        let list = await fetchEdtList(url);
+        if (!list) {
+            // Session EDT absente ou expirée : ouvrir le lien signé la recrée (comme un clic dans MonCampus)
+            const edtUrl = await getEdtUrl();
+            if (edtUrl) {
+                await fetch(edtUrl, { credentials: 'include', cache: 'no-store' }).catch(() => { });
+                list = await fetchEdtList(url);
+            }
+        }
+        if (!list) {
             await chrome.storage.local.set({ igs_edt_sync_error: 'session' });
-            return { ok: false, reason: 'session', status: resp.status };
+            return { ok: false, reason: 'session' };
         }
 
         const events = list.map(item => normalizeEdtEvent(item, { fromApi: true })).filter(Boolean);

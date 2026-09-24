@@ -205,9 +205,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const coursesSync = document.getElementById('courses-sync');
     let edtUrl = null;
 
-    document.getElementById('edt-open').addEventListener('click', (e) => {
+    // Le background renvoie le lien signé de l'EDT (mémorisé ou retrouvé sur MonCampus) avec la date du jour
+    document.getElementById('edt-open').addEventListener('click', async (e) => {
         e.preventDefault();
-        openTab(edtUrl || 'https://moncampus.igensia-education.fr/');
+        let url = null;
+        try {
+            const resp = await popupSendMessage({ action: 'get_edt_url' }, 8000);
+            url = resp && resp.url;
+        } catch (err) { }
+        openTab(url || edtUrl || 'https://moncampus.igensia-education.fr/');
     });
 
     function formatHour(date) {
@@ -305,12 +311,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function renderCourses(events, syncedAt, error) {
         coursesBody.innerHTML = '';
-        if (error === 'session') setFootnote(coursesSync, "Session EDT expirée : ouvre l'EDT une fois pour la renouveler.", true);
+        if (error === 'session') setFootnote(coursesSync, "Connecte-toi à MonCampus pour synchroniser l'emploi du temps.", true);
         else if (error === 'format') setFootnote(coursesSync, 'Synchronisation EDT impossible (format inconnu).', true);
         else setFootnote(coursesSync, formatSyncAge(syncedAt));
 
         if (!events.length && !syncedAt) {
-            emptyState(coursesBody, "Ouvre ton emploi du temps une fois pour synchroniser tes cours.");
+            emptyState(coursesBody, "Connecte-toi à MonCampus pour synchroniser tes cours.");
             return;
         }
 

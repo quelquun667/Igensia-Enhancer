@@ -1,4 +1,9 @@
 # Journal des modifications
+## 2.6.1 - 2026-09-24
+### Corrections
+- **Bouton « Ouvrir l'EDT »** : fonctionne même sans être jamais allé sur l'emploi du temps (lien récupéré depuis MonCampus) et ouvre la semaine en cours
+- **Synchronisation de l'EDT** : la session de l'emploi du temps est recréée automatiquement, il suffit d'être connecté à MonCampus
+
 ## 2.6.0 - 2026-09-24
 ### Nouveautés
 - **Popup entièrement refait** : nouvelle interface avec icônes SVG, thème Clair / Sombre / Système

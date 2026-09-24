@@ -1572,9 +1572,22 @@
         }
     }
 
+    // Mémoriser le lien signé vers l'EDT (menu de MonCampus) pour le bouton « Ouvrir l'EDT » du popup.
+    // Le hashURL ne dépend pas de la date : le lien reste valable, seule la date est mise à jour à l'ouverture.
+    function saveEdtLinkFromPage() {
+        const link = document.querySelector('a[href*="ws-edt-igs.wigorservices.net/WebPsDyn.aspx"][href*="hashURL="]');
+        if (!link) return;
+        try {
+            chrome.storage.local.set({ igs_edt_url: link.href });
+        } catch (e) {
+            console.warn('Igensia Enhancer: impossible de sauvegarder le lien EDT', e);
+        }
+    }
+
     // Exécuter le script après le chargement complet de la page
     window.addEventListener('load', () => {
         console.log("Igensia Enhancer: Page loaded, calculating and displaying summary.");
+        saveEdtLinkFromPage();
         saveSubjectsFromNotes();
         calculateAndDisplaySummary();
     });
