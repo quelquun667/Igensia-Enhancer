@@ -9,80 +9,173 @@
 </head>
 
 <body>
-    <div class="container">
-        <button id="settings-btn" class="settings-btn" aria-label="Paramètres">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M0 0h24v24H0z" fill="none" />
-                <path
-                    d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.09-.76-1.71-1.06L14.46 2.5c-.09-.22-.3-.38-.53-.38h-4c-.23 0-.44.16-.53.38L9.09 5.75c-.62.3-1.19.66-1.71 1.06l-2.49-1c-.22-.08-.49 0-.61.22l-2 3.46c-.12.22-.07.49.12.64l2.11 1.65c-.04.32-.07.64-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.09.76 1.71 1.06l.36 3.25c.09.22.30.38.53.38h4c.23 0 .44-.16.53-.38l.36-3.25c.62-.3 1.19-.66 1.71-1.06l2.49 1c.22.08.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zm-7.43-2.52c1.93 0 3.5-1.57 3.5-3.5s-1.57-3.5-3.5-3.5-3.5 1.57-3.5 3.5 1.57 3.5 3.5 3.5z" />
-            </svg>
-            <span id="settings-badge" aria-hidden="true">!</span>
+    <header class="app-header">
+        <button id="back-btn" class="icon-btn" type="button" aria-label="Retour" hidden>
+            <span data-icon="arrow-left"></span>
         </button>
-        <div id="home-view">
-            <h1>Igensia Enhancer</h1>
-            <p>Bienvenue sur votre extension personnalisée pour MonCampus Igensia.</p>
-            <div class="button-group">
-                <button id="show-devoirs-btn">Mes Devoirs</button>
-                <!-- D'autres boutons pour de futures fonctionnalités pourraient être ajoutés ici -->
-            </div>
-            <div id="time-stats"
-                style="margin-top: 15px; padding: 12px; background: linear-gradient(135deg, rgba(102,126,234,0.1) 0%, rgba(118,75,162,0.1) 100%); border-radius: 8px;">
-                <h3 style="margin: 0 0 10px 0; font-size: 14px;">⏱️ Temps passé sur MonCampus</h3>
-                <div style="display: flex; gap: 15px;">
-                    <div style="text-align: center;">
-                        <div id="time-today" style="font-size: 20px; font-weight: bold; color: #667eea;">0h 0m</div>
-                        <div style="font-size: 11px; opacity: 0.7;">Aujourd'hui</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div id="time-week" style="font-size: 20px; font-weight: bold; color: #764ba2;">0h 0m</div>
-                        <div style="font-size: 11px; opacity: 0.7;">Cette semaine</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div id="time-total" style="font-size: 20px; font-weight: bold; color: #28a745;">0h 0m</div>
-                        <div style="font-size: 11px; opacity: 0.7;">Total</div>
-                    </div>
-                </div>
-            </div>
+        <img id="app-logo" class="app-logo" src="icons/icon48.png" alt="" width="32" height="32">
+        <div class="app-title">
+            <h1 id="view-title">Igensia Enhancer</h1>
+            <p id="view-subtitle" class="app-subtitle"></p>
         </div>
+        <button id="settings-btn" class="icon-btn" type="button" aria-label="Paramètres">
+            <span data-icon="settings"></span>
+            <span id="settings-badge" class="dot-badge" hidden></span>
+        </button>
+    </header>
 
-        <div id="settings-panel" class="settings-panel">
-            <div class="settings-card">
-                <h2>Paramètres</h2>
-                <div class="theme-selection">
-                    <h3>Thèmes</h3>
-                    <button class="theme-btn" data-theme="default">Défaut</button>
-                    <button class="theme-btn" data-theme="dark">Sombre</button>
+    <main>
+        <!-- ============ Accueil ============ -->
+        <section id="view-home" class="view" aria-label="Accueil">
+            <article class="card" aria-labelledby="courses-title">
+                <div class="card-header">
+                    <h2 id="courses-title" class="card-title"><span data-icon="calendar"></span>Cours</h2>
+                    <a href="#" id="edt-open" class="card-link">Ouvrir l'EDT<span data-icon="external-link" data-icon-class="icon icon-xs"></span></a>
                 </div>
-                <div style="margin-top:12px;">
-                    <button id="settings-check-update-btn" style="width:100%;">Vérifier mise à jour</button>
-                    <div id="settings-update-actions" style="display:none; margin-top:10px;">
-                        <div id="settings-update-text" style="margin-bottom:8px; font-size:14px;"></div>
-                        <div style="display:flex; gap:8px;">
-                            <button id="settings-see-update-btn" style="flex:1;">Voir</button>
-                            <button id="settings-dismiss-update-btn" style="flex:1;">Ignorer</button>
-                        </div>
+                <div id="courses-body" class="card-body">
+                    <p class="muted">Chargement…</p>
+                </div>
+                <p id="courses-sync" class="card-footnote"></p>
+            </article>
+
+            <article class="card" aria-labelledby="grades-title">
+                <div class="card-header">
+                    <h2 id="grades-title" class="card-title"><span data-icon="graduation-cap"></span>Dernières notes</h2>
+                    <a href="#" id="grades-open" class="card-link">Relevé<span data-icon="external-link" data-icon-class="icon icon-xs"></span></a>
+                </div>
+                <div id="grades-body" class="card-body">
+                    <p class="muted">Chargement…</p>
+                </div>
+                <p id="grades-sync" class="card-footnote"></p>
+            </article>
+
+            <button id="devoirs-shortcut" class="card card-button" type="button">
+                <span class="tile-icon" data-icon="clipboard-list"></span>
+                <span class="tile-text">
+                    <span class="tile-title">Mes devoirs</span>
+                    <span id="devoirs-summary" class="tile-sub">Aucun devoir à rendre</span>
+                </span>
+                <span id="devoirs-count" class="count-badge" hidden></span>
+                <span data-icon="chevron-right" data-icon-class="icon tile-chevron"></span>
+            </button>
+
+            <article class="card" aria-labelledby="time-title">
+                <div class="card-header">
+                    <h2 id="time-title" class="card-title"><span data-icon="timer"></span>Temps passé sur MonCampus</h2>
+                </div>
+                <div class="stats">
+                    <div class="stat">
+                        <span id="time-today" class="stat-value">0h 0m</span>
+                        <span class="stat-label">Aujourd'hui</span>
+                    </div>
+                    <div class="stat">
+                        <span id="time-week" class="stat-value">0h 0m</span>
+                        <span class="stat-label">Cette semaine</span>
+                    </div>
+                    <div class="stat">
+                        <span id="time-total" class="stat-value">0h 0m</span>
+                        <span class="stat-label">Total</span>
                     </div>
                 </div>
-                <div class="settings-actions">
-                    <button id="close-settings-btn">Fermer</button>
-                </div>
-            </div>
-        </div>
+            </article>
+        </section>
 
-        <iframe id="devoirs-iframe" src="devoirs.html"
-            style="display:none; width:100%; height:400px; border:none;"></iframe>
-    </div>
+        <!-- ============ Devoirs ============ -->
+        <section id="view-devoirs" class="view" aria-label="Mes devoirs" hidden>
+            <form id="devoir-form" class="card form-card" novalidate>
+                <h2 id="devoir-form-title" class="card-title"><span data-icon="plus"></span>Nouveau devoir</h2>
+                <div class="field">
+                    <label for="devoir-title">Titre</label>
+                    <input type="text" id="devoir-title" maxlength="120" placeholder="Ex. : TP réseau n°3" autocomplete="off">
+                    <p id="devoir-title-error" class="field-error" hidden>Donne un titre au devoir.</p>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="devoir-subject">Matière</label>
+                        <select id="devoir-subject">
+                            <option value="">Aucune</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="devoir-due-date">Échéance</label>
+                        <input type="date" id="devoir-due-date">
+                    </div>
+                </div>
+                <p id="subjects-hint" class="field-hint" hidden>Les matières se chargent depuis ton relevé de notes et ton emploi du temps.</p>
+                <p id="due-suggestion" class="field-hint" hidden></p>
+                <div class="field">
+                    <label for="devoir-description">Description <span class="optional">(optionnel)</span></label>
+                    <textarea id="devoir-description" rows="2" placeholder="Consignes, liens, pages à lire…"></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="devoir-cancel-edit" class="btn btn-ghost" hidden>Annuler</button>
+                    <button type="submit" id="devoir-submit" class="btn btn-primary">Ajouter</button>
+                </div>
+            </form>
+
+            <div class="list-toolbar">
+                <h2 class="section-title">À faire <span id="devoirs-todo-count" class="section-count"></span></h2>
+                <select id="devoir-filter-subject" class="select-sm" aria-label="Filtrer par matière">
+                    <option value="">Toutes les matières</option>
+                </select>
+            </div>
+            <ul id="devoir-list" class="devoir-list"></ul>
+
+            <details id="done-section" class="done-section" hidden>
+                <summary>Terminés <span id="devoirs-done-count" class="section-count"></span></summary>
+                <ul id="devoir-done-list" class="devoir-list"></ul>
+            </details>
+        </section>
+
+        <!-- ============ Paramètres ============ -->
+        <section id="view-settings" class="view" aria-label="Paramètres" hidden>
+            <article class="card">
+                <h2 class="card-title"><span data-icon="sun"></span>Apparence</h2>
+                <div class="segmented" role="radiogroup" aria-label="Thème">
+                    <button type="button" class="segment" role="radio" data-theme="default"><span data-icon="sun"></span>Clair</button>
+                    <button type="button" class="segment" role="radio" data-theme="dark"><span data-icon="moon"></span>Sombre</button>
+                    <button type="button" class="segment" role="radio" data-theme="system"><span data-icon="monitor"></span>Système</button>
+                </div>
+            </article>
+
+            <article class="card">
+                <h2 class="card-title"><span data-icon="download"></span>Mises à jour</h2>
+                <div class="setting-row">
+                    <div>
+                        <div class="setting-label">Version installée</div>
+                        <div id="version-display" class="setting-value"></div>
+                    </div>
+                    <button id="settings-check-update-btn" class="btn btn-secondary btn-sm" type="button">
+                        <span data-icon="refresh"></span>Vérifier
+                    </button>
+                </div>
+                <div id="update-status" class="update-status" role="status" hidden>
+                    <p id="update-status-text"></p>
+                    <div id="update-actions" class="form-actions" hidden>
+                        <button id="settings-dismiss-update-btn" class="btn btn-ghost btn-sm" type="button">Ignorer</button>
+                        <button id="settings-see-update-btn" class="btn btn-primary btn-sm" type="button">Voir sur GitHub</button>
+                    </div>
+                </div>
+            </article>
+
+            <article class="card">
+                <h2 class="card-title"><span data-icon="github"></span>À propos</h2>
+                <p class="muted">Extension non officielle pour MonCampus Igensia. Tes données restent dans ton navigateur.</p>
+                <a class="btn btn-star" href="https://github.com/quelquun667/Igensia-Extension" target="_blank" rel="noopener">
+                    <span data-icon="star"></span>Mettre une étoile sur GitHub
+                </a>
+                <p class="muted star-hint">Ça aide le projet à être découvert par d'autres étudiants.</p>
+                <div class="about-links">
+                    <a class="card-link" href="https://github.com/quelquun667/Igensia-Extension" target="_blank" rel="noopener"><span data-icon="github" data-icon-class="icon icon-xs"></span>Voir le code</a>
+                    <a class="card-link" href="https://github.com/quelquun667/Igensia-Extension/issues/new" target="_blank" rel="noopener"><span data-icon="bug" data-icon-class="icon icon-xs"></span>Signaler un bug</a>
+                </div>
+            </article>
+        </section>
+    </main>
+
+    <script src="icons.js"></script>
+    <script src="devoirs.js"></script>
     <script src="extension_home.js"></script>
-    <div class="footer">
-        <p>Créé par <a href="https://github.com/quelquun667" target="_blank">quelquun667</a></p>
-        <span id="version-display" class="version-display"></span>
-    </div>
-    <div id="update-banner"
-        style="display:none; position:fixed; left:12px; right:12px; bottom:60px; background:#fff3cd; color:#856404; border:1px solid #ffeeba; padding:10px; border-radius:6px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
-        <span id="update-banner-text"></span>
-        <button id="update-open-btn" style="margin-left:10px;">Voir</button>
-        <button id="update-dismiss-btn" style="margin-left:6px;">Ignorer</button>
-    </div>
 </body>
 
 </html>

@@ -1,4 +1,27 @@
 # Journal des modifications
+## 2.6.0 - 2026-09-24
+### Nouveautés
+- **Popup entièrement refait** : nouvelle interface avec icônes SVG, thème Clair / Sombre / Système
+- **Cours en cours et prochain cours** : horaires, salle (ou distanciel), prof et avancement du cours, synchronisés automatiquement depuis l'emploi du temps
+- **Dernières notes dans le popup** : les 5 dernières notes avec l'étiquette « Nouveau », sans ouvrir le relevé
+- **Relevé de l'année en cours** : détecté automatiquement depuis la page E-Notes (plus besoin de l'URL)
+- **Devoirs par matière** : choix de la matière (depuis le relevé et l'EDT), filtre, date d'échéance suggérée au prochain cours de la matière
+- **Devoirs** : vrai mode modification, case à cocher, échéances colorées (en retard, aujourd'hui, demain), devoirs terminés regroupés
+- **Paramètres** : liens pour mettre une étoile sur GitHub, voir le code et signaler un bug
+- **Compatibilité Firefox** : manifest compatible Chrome, Edge et Firefox (115+)
+
+### Corrections
+- **Calcul du GPA** : moyenne calculée par matière (et non sur la dernière épreuve), barème corrigé, plus de notes exclues silencieusement, export PDF avec moyennes en lettre et statut validé / non validé — merci à [@SudoKipedia](https://github.com/SudoKipedia) (PR #1)
+- **Alertes de nouvelles notes** : elles ne fonctionnaient pas (DOMParser indisponible dans le service worker) ; plus de notification en masse au premier lancement
+- **Reconnexion automatique** : l'extension suit la redirection CAS quand la session des notes expire
+- **Temps passé** : le chrono n'est plus perdu quand Chrome met le service worker en veille ; jours et semaines en heure locale
+- **Mises à jour** : plus de notification « nouvelle version » à chaque installation
+- **Devoirs** : un devoir n'est plus supprimé quand on clique sur « Modifier » ; les devoirs sans date passent à la fin
+- **Sécurité** : le texte des devoirs n'est plus injecté en HTML brut
+
+### Permissions
+- Ajout de `cas-p.wigorservices.net` (serveur de connexion Wigor) pour la reconnexion automatique
+
 ## 2.5.0 - 2026-02-11
 ### Nouveautés
 - **Barre GPA refaite** : Échelle fixe 0→4, la barre colorée représente la moyenne actuelle

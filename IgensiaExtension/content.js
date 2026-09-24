@@ -1546,9 +1546,36 @@
         absenceStats.innerHTML = statsHtml;
     }
 
+    // Mémoriser les matières du relevé pour les proposer dans « Mes Devoirs »
+    function saveSubjectsFromNotes() {
+        const names = Array.from(document.querySelectorAll('.table-notes th.col-5'))
+            // dataset.originalText : le texte peut être modifié par le simulateur
+            .map(th => (th.dataset.originalText || th.textContent || '').trim())
+            .map(name => name.replace(/^[A-Z0-9]+\s*-\s*/, '').trim()) // retire le code module « IAUX261 - »
+            .filter(Boolean);
+        if (!names.length) return;
+        try {
+            chrome.storage.local.get(['igs_subjects'], (res) => {
+                const subjects = res.igs_subjects || [];
+                const known = new Set(subjects.map(s => s.toLowerCase()));
+                names.forEach(name => {
+                    if (!known.has(name.toLowerCase())) {
+                        known.add(name.toLowerCase());
+                        subjects.push(name);
+                    }
+                });
+                subjects.sort((a, b) => a.localeCompare(b, 'fr'));
+                chrome.storage.local.set({ igs_subjects: subjects });
+            });
+        } catch (e) {
+            console.warn('Igensia Enhancer: impossible de sauvegarder les matières', e);
+        }
+    }
+
     // Exécuter le script après le chargement complet de la page
     window.addEventListener('load', () => {
         console.log("Igensia Enhancer: Page loaded, calculating and displaying summary.");
+        saveSubjectsFromNotes();
         calculateAndDisplaySummary();
     });
 })();

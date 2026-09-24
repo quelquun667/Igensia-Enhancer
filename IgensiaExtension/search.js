@@ -82,6 +82,51 @@
         }
     }
 
+    // -------------------------
+    // Synchronisation de l'EDT vers l'extension (prochain cours dans le popup)
+    // search.js tourne dans le contexte de la page : il a accès à l'instance Kendo,
+    // il transmet les cours chargés à edt_content.js via window.postMessage.
+    // -------------------------
+    let edtSyncBound = false;
+
+    function toIso(d) {
+        const date = d instanceof Date ? d : new Date(d);
+        return isNaN(date) ? null : date.toISOString();
+    }
+
+    function sendEdtEvents(scheduler) {
+        // Mêmes noms de champs que l'API /Home/Get : normalizeEdtEvent (background.js) fait le reste
+        const events = scheduler.dataSource.data().map(ev => ({
+            start: toIso(ev.start),
+            end: toIso(ev.end),
+            title: ev.title || ev.Title || '',
+            Matiere: ev.Matiere || '',
+            NomProf: ev.NomProf || '',
+            Salles: ev.Salles || '',
+            Commentaire: ev.Commentaire || '',
+            LienTrack: ev.LienTrack || '',
+            TeamsUrl: ev.TeamsUrl || ''
+        })).filter(ev => ev.start && ev.end);
+        window.postMessage({ source: 'igs-edt-sync', events }, window.location.origin);
+    }
+
+    function bindEdtSync() {
+        if (edtSyncBound || typeof $ === 'undefined') return;
+        const scheduler = $("#scheduler").data("kendoScheduler");
+        if (!scheduler) return;
+        edtSyncBound = true;
+        // Chaque navigation (semaine suivante, etc.) recharge la dataSource
+        scheduler.dataSource.bind('change', () => sendEdtEvents(scheduler));
+        sendEdtEvents(scheduler);
+    }
+
+    const edtSyncObserver = new MutationObserver(() => {
+        bindEdtSync();
+        if (edtSyncBound) edtSyncObserver.disconnect();
+    });
+    edtSyncObserver.observe(document.body, { childList: true, subtree: true });
+    bindEdtSync();
+
     // Use a MutationObserver to wait for the scheduler toolbar to be available
     const observer = new MutationObserver((mutationsList, observer) => {
         console.log("search.js: MutationObserver triggered.");

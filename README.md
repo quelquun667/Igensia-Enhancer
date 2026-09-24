@@ -1,18 +1,26 @@
 # Igensia Extension
  
-## Version: 2.5.0
+## Version: 2.6.0
 
-Ce dépôt contient l'extension de navigateur "Igensia" (dossier `IgensiaExtension`).
+Extension de navigateur (Chrome, Edge, Firefox) pour MonCampus Igensia : ton prochain cours et tes dernières notes en un clic, un suivi de devoirs par matière, et des outils en plus sur les pages de notes et d'absences.
+
+Le code de l'extension se trouve dans le dossier `IgensiaExtension`.
 
 ## Démo rapide
 
 <p align="center">
-	<img src="img/devoirs-demo.png" alt="Popup Mes Devoirs" width="30%" />
-	<img src="img/notes-demo.png" alt="Tableau des notes et graphiques" width="30%" />
-	<img src="img/absences-demo.png" alt="Résumé des absences" width="30%" />
+	<img src="img/popup-demo.png" alt="Popup : cours en cours, prochain cours et dernières notes" width="30%" />
+	<img src="img/devoirs-demo.png" alt="Mes devoirs, thème sombre" width="30%" />
+	<img src="img/settings-demo.png" alt="Paramètres : thème et mises à jour" width="30%" />
 	<br/>
-	<em>De gauche à droite : Mes Devoirs • Répartition des notes • Résumé des absences</em>
+	<em>Popup de l'extension : Accueil • Mes devoirs (thème sombre) • Paramètres</em>
+</p>
+
+<p align="center">
+	<img src="img/notes-demo.png" alt="Tableau des notes et graphiques" width="55%" />
+	<img src="img/absences-demo.png" alt="Résumé des absences" width="40%" />
 	<br/>
+	<em>Sur MonCampus : Relevé de notes • Résumé des absences</em>
 </p>
 
 ## Objectif
@@ -21,10 +29,15 @@ Ce README explique comment télécharger le projet et l'importer dans un navigat
 
 ## Fonctionnalités
 
+- Popup
+	- Cours en cours (avec avancement) et prochain cours : horaires, salle ou distanciel, prof
+	- Dernières notes, avec l'étiquette « Nouveau » pour celles pas encore vues
+	- Synchronisation automatique de l'emploi du temps et du relevé de l'année en cours (il suffit de les avoir ouverts une fois dans la session)
+
 - Mes Devoirs (dans le popup)
-	- Ajouter, modifier, terminer et supprimer des devoirs
-	- Date d'échéance et affichage clair
-	- Thème clair/sombre synchronisé avec le reste de l'extension
+	- Ajouter, modifier, cocher comme terminé et supprimer des devoirs
+	- Matière à choisir parmi celles du relevé et de l'EDT, filtre par matière
+	- Échéance suggérée au prochain cours de la matière, échéances colorées (en retard, aujourd'hui, demain)
 
 - Notes (pages MonCampus/Wigor)
 	- Calcul automatique de la moyenne pondérée (GPA) et du pourcentage de modules validés
@@ -52,7 +65,7 @@ Ce README explique comment télécharger le projet et l'importer dans un navigat
 	- Récupération résiliente via le service worker (fallback en cas d'erreurs réseau/CORS)
 
 - Alertes de notes
-	- Notifications Chrome automatiques lors de nouvelles notes
+	- Notification automatique (toutes les 2 h) lors de nouvelles notes, avec un badge sur l'icône
 
 - Temps passé sur MonCampus
 	- Suivi automatique du temps (aujourd'hui, semaine, total)
@@ -63,14 +76,14 @@ Ce README explique comment télécharger le projet et l'importer dans un navigat
 	- Actions dans les paramètres: « Voir » (ouvrir GitHub) ou « Ignorer » (retirer le badge)
 
 - Paramètres et thème
-	- Thème clair/sombre, mémorisé entre les sessions
+	- Thème clair, sombre ou système, mémorisé entre les sessions
 
 - Intégration MonCampus
 	- Insertion d'un bouton/onglet « Mes Devoirs » pour ouvrir rapidement le popup
 
 - Vie privée
 	- Données stockées localement dans le navigateur; aucune télémétrie
-	- Permissions limitées aux domaines MonCampus/Wigor et à raw.githubusercontent.com (pour la vérification de mise à jour)
+	- Permissions limitées aux domaines MonCampus/Wigor (dont `cas-p.wigorservices.net`, le serveur de connexion, pour se reconnecter automatiquement) et à GitHub (pour la vérification de mise à jour)
 
 ## Prérequis
 
@@ -112,6 +125,10 @@ Exemple PowerShell pour créer une archive ZIP du dossier (optionnel) :
 2. Cliquez sur "Load Temporary Add-on..." (ou "Charger un module temporaire").
 3. Dans la boîte de dialogue, sélectionnez le fichier `manifest.json` qui se trouve dans le dossier `IgensiaExtension`.
 
+4. Firefox n'accorde pas automatiquement l'accès aux sites en Manifest V3 : ouvrez `about:addons`, cliquez sur Igensia Enhancer → onglet **Permissions**, puis activez l'accès aux sites MonCampus et Wigor. Sans ça, la synchronisation des cours et des notes ne fonctionne pas.
+
+Firefox 115 ou plus récent est nécessaire.
+
 Important : le chargement temporaire n'est pas persistant — l'extension sera désactivée au redémarrage de Firefox. Pour une installation permanente sur Firefox, il faut signer l'extension et la publier sur AMO (addons.mozilla.org) ou l'installer via un paquet signé.
 
 ## Dépannage rapide
@@ -119,7 +136,4 @@ Important : le chargement temporaire n'est pas persistant — l'extension sera d
 - Erreur "Manifest is missing or unreadable" : vérifiez que vous avez sélectionné le dossier contenant `manifest.json`.
 - Permissions bloquées : relisez `manifest.json` et accordez les permissions demandées lors de l'installation.
 - Rafraîchir l'extension : après modification des fichiers, retournez dans la page d'extensions du navigateur et cliquez sur "Reload" / "Recharger".
-
-## Remarques finales
-
-Ce README couvre le chargement en mode développement. Si vous souhaitez préparer une version distribuable ou publier l'extension, dites-moi quel navigateur vous ciblez en priorité et je peux ajouter les étapes de packaging et publication.
+- Le popup affiche « Session expirée » : ouvrez une fois l'emploi du temps ou le relevé de notes depuis MonCampus pour renouveler la session, puis rouvrez le popup.

@@ -21,4 +21,21 @@
     }
 
     loadSearchFeatures();
+
+    // Réception des cours envoyés par search.js (contexte page) et mise en cache
+    // pour le « prochain cours » du popup et la liste des matières des devoirs.
+    window.addEventListener('message', (event) => {
+        if (event.source !== window || !event.data || event.data.source !== 'igs-edt-sync') return;
+        const incoming = Array.isArray(event.data.events) ? event.data.events : [];
+        if (!incoming.length) return;
+        // La fusion avec le cache est faite par le background (storeEdtEvents),
+        // qui gère aussi la synchro réseau de l'EDT.
+        try {
+            chrome.runtime.sendMessage({ action: 'edt_store_events', events: incoming, url: window.location.href }, () => {
+                void chrome.runtime.lastError; // extension rechargée : on ignore
+            });
+        } catch (e) {
+            console.warn('Igensia Enhancer: impossible de transmettre l\'EDT', e);
+        }
+    });
 })();
