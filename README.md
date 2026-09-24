@@ -4,7 +4,7 @@
 
 # Igensia Enhancer
 
-## Version: 2.6.1
+## Version: 2.6.2
 
 Extension de navigateur (Chrome, Edge, Firefox) pour MonCampus Igensia : ton prochain cours et tes dernières notes en un clic, un suivi de devoirs par matière, et des outils en plus sur les pages de notes et d'absences.
 
@@ -124,10 +124,16 @@ Exemple PowerShell pour créer une archive ZIP du dossier (optionnel) :
 
 ## Charger l'extension dans Firefox (charge temporaire)
 
+Le dossier `IgensiaExtension` est prévu pour Chrome/Edge : Firefox a besoin d'un manifest légèrement différent. Utilisez la version Firefox :
+
+- soit en téléchargeant `IgensiaExtension-firefox.zip` depuis la [dernière release](https://github.com/quelquun667/Igensia-Enhancer/releases/latest) ;
+- soit en la générant depuis le dépôt (Node.js 18+) : `node tools/build-firefox.js`, qui crée `dist/IgensiaExtension-firefox/` et son `.zip`.
+
+Puis :
+
 1. Ouvrez Firefox et allez sur `about:debugging#/runtime/this-firefox`.
 2. Cliquez sur "Load Temporary Add-on..." (ou "Charger un module temporaire").
-3. Dans la boîte de dialogue, sélectionnez le fichier `manifest.json` qui se trouve dans le dossier `IgensiaExtension`.
-
+3. Sélectionnez le fichier `IgensiaExtension-firefox.zip` (ou le `manifest.json` du dossier `dist/IgensiaExtension-firefox`).
 4. Firefox n'accorde pas automatiquement l'accès aux sites en Manifest V3 : ouvrez `about:addons`, cliquez sur Igensia Enhancer → onglet **Permissions**, puis activez l'accès aux sites MonCampus et Wigor. Sans ça, la synchronisation des cours et des notes ne fonctionne pas.
 
 Firefox 115 ou plus récent est nécessaire.

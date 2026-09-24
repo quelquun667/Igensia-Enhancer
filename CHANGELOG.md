@@ -1,4 +1,11 @@
 # Journal des modifications
+## 2.6.2 - 2026-09-24
+### Corrections
+- **Plus d'avertissement dans Chrome/Edge** : le manifest ne contient plus les clés propres à Firefox (`background.scripts`, `browser_specific_settings`)
+
+### Firefox
+- Version Firefox fournie à part : `IgensiaExtension-firefox.zip` dans les releases, ou `node tools/build-firefox.js` pour la générer depuis le dépôt
+
 ## 2.6.1 - 2026-09-24
 ### Corrections
 - **Bouton « Ouvrir l'EDT »** : fonctionne même sans être jamais allé sur l'emploi du temps (lien récupéré depuis MonCampus) et ouvre la semaine en cours
