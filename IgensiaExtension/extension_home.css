@@ -311,6 +311,35 @@ main {
     opacity: 0.7;
 }
 
+/* ---------- Bannière de mise à jour ---------- */
+.update-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 8px 10px 12px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    background: var(--accent-soft);
+}
+
+.update-banner > span:first-child {
+    color: var(--accent);
+}
+
+.update-banner-text {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.update-banner-text strong {
+    font-size: 13px;
+    color: var(--text);
+}
+
 /* ---------- Cours ---------- */
 .course + .course {
     margin-top: 12px;
@@ -993,6 +1022,59 @@ input[aria-invalid="true"] {
 .setting-value {
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Interrupteurs ---------- */
+.toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.toggle-row > span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.setting-title {
+    font-weight: 600;
+}
+
+.switch {
+    appearance: none;
+    position: relative;
+    flex-shrink: 0;
+    width: 40px;
+    height: 24px;
+    margin: 0;
+    border-radius: 999px;
+    background: var(--border);
+    cursor: pointer;
+    transition: background-color 150ms var(--ease);
+}
+
+.switch::after {
+    content: "";
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+    transition: transform 150ms var(--ease);
+}
+
+.switch:checked {
+    background: var(--primary);
+}
+
+.switch:checked::after {
+    transform: translateX(16px);
 }
 
 .btn-star {

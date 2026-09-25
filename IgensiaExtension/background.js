@@ -1,4 +1,255 @@
+// Téléchargement PDF (pdf_viewer.js) : récupère une image cross-origin du visionneur
+// en data URL, avec les cookies de l'utilisateur (le content script est bloqué par CORS).
+async function fetchImageAsDataUrl(url) {
+    const res = await fetch(url, { credentials: 'include' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const type = res.headers.get('content-type') || 'image/jpeg';
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return `data:${type};base64,${btoa(binary)}`;
+}
+
+// Téléchargement PDF : télécharge une requête seulement s'il s'agit d'un fichier PDF.
+// Les premiers octets suffisent à le savoir (signature « %PDF- ») : sinon on
+// interrompt le téléchargement tout de suite.
+function parseDispositionFilename(header) {
+    if (!header) return '';
+    const star = header.match(/filename\*\s*=\s*[^']*''([^;]+)/i);
+    if (star) {
+        try { return decodeURIComponent(star[1].trim()); } catch { /* valeur mal encodée */ }
+    }
+    const plain = header.match(/filename\s*=\s*"?([^";]+)"?/i);
+    return plain ? plain[1].trim() : '';
+}
+
+function concatBytes(chunks, size) {
+    const bytes = new Uint8Array(size);
+    let offset = 0;
+    for (const c of chunks) { bytes.set(c, offset); offset += c.length; }
+    return bytes;
+}
+
+function bytesToBase64(bytes) {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(binary);
+}
+
+function base64ToBytes(b64) {
+    const binary = atob(b64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+}
+
+async function fetchPdfIfAny(url, init = {}) {
+    const res = await fetch(url, { credentials: 'include', ...init });
+    if (!res.ok || !res.body) return null;
+    const reader = res.body.getReader();
+    const chunks = [];
+    let size = 0;
+    let checked = false;
+    for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        size += value.length;
+        if (!checked && size >= 5) {
+            checked = true;
+            const first = chunks.length === 1 ? value : concatBytes(chunks, size);
+            if (String.fromCharCode(...first.subarray(0, 5)) !== '%PDF-') {
+                reader.cancel().catch(() => { });
+                return null;
+            }
+        }
+    }
+    const bytes = concatBytes(chunks, size);
+    if (bytes.length < 5 || String.fromCharCode(...bytes.subarray(0, 5)) !== '%PDF-') return null;
+    return {
+        dataUrl: `data:application/pdf;base64,${bytesToBase64(bytes)}`,
+        filename: parseDispositionFilename(res.headers.get('content-disposition'))
+    };
+}
+
+// Les réponses PDF chargées par chaque onglet (visionneur, workers compris) sont
+// repérées ici grâce à chrome.webRequest, sans rien injecter dans la page. Le bouton
+// « Télécharger en PDF » les re-télécharge ensuite (IGPDF_FIND_PDF).
+// Stockage en storage.session : le service worker peut être arrêté entre-temps.
+const PDF_REQUESTS_KEY = 'igs_pdf_requests';
+// Le visionneur de documents de MonCampus est celui de Box : le fichier est servi
+// par dl.boxcloud.com (représentations « pdf » / « original »), pas par Igensia.
+const PDF_WATCH_URLS = [
+    'https://*.igensia-education.fr/*',
+    'https://*.igensia.com/*',
+    'https://*.box.com/*',
+    'https://*.boxcloud.com/*'
+];
+const MAX_PDF_REQUESTS_PER_TAB = 8;
+const MAX_REPLAY_BODY_BYTES = 64 * 1024;
+const pendingBodies = new Map(); // requestId → corps de la requête POST (pour la rejouer)
+const pendingAuth = new Map();   // requestId → en-tête Authorization (Box : « Bearer … »)
+
+function headerValue(headers, name) {
+    const h = (headers || []).find(x => x.name.toLowerCase() === name);
+    return h ? h.value || '' : '';
+}
+
+function looksLikePdfResponse(details) {
+    const type = headerValue(details.responseHeaders, 'content-type');
+    const disposition = headerValue(details.responseHeaders, 'content-disposition');
+    if (/application\/(pdf|x-pdf)/i.test(type) ||
+        /\.pdf(\?|#|$)/i.test(details.url) ||
+        /\.pdf/i.test(disposition) ||
+        (/application\/octet-stream/i.test(type) && /attachment|filename/i.test(disposition))) {
+        return true;
+    }
+    // Contenu d'une représentation Box, souvent servi en binary/octet-stream sans nom
+    return /boxcloud\.com\/.*\/representations\/(pdf|original)\b|boxcloud\.com\/.*\/content\b/i.test(details.url) &&
+        !/json|html|image\/|text\/|javascript|font/i.test(type);
+}
+
+let pdfStoreQueue = Promise.resolve();
+function rememberPdfRequest(tabId, entry) {
+    pdfStoreQueue = pdfStoreQueue.then(async () => {
+        const stored = await chrome.storage.session.get(PDF_REQUESTS_KEY);
+        const all = stored[PDF_REQUESTS_KEY] || {};
+        const list = (all[tabId] || []).filter(e => !(e.url === entry.url && e.method === entry.method));
+        list.unshift(entry);
+        all[tabId] = list.slice(0, MAX_PDF_REQUESTS_PER_TAB);
+        await chrome.storage.session.set({ [PDF_REQUESTS_KEY]: all });
+    }).catch(err => console.warn('PDF requests store error:', err));
+}
+
+if (chrome.webRequest) {
+    chrome.webRequest.onBeforeRequest.addListener((details) => {
+        if (details.method !== 'POST' || !details.requestBody) return;
+        const body = details.requestBody;
+        if (body.formData) {
+            pendingBodies.set(details.requestId, { formData: body.formData });
+        } else if (body.raw && body.raw.length === 1 && body.raw[0].bytes && body.raw[0].bytes.byteLength <= MAX_REPLAY_BODY_BYTES) {
+            pendingBodies.set(details.requestId, { raw: bytesToBase64(new Uint8Array(body.raw[0].bytes)) });
+        }
+        if (pendingBodies.size > 200) pendingBodies.delete(pendingBodies.keys().next().value);
+    }, { urls: PDF_WATCH_URLS }, ['requestBody']);
+
+    // Box peut exiger le jeton d'accès du visionneur (Authorization: Bearer …) :
+    // on le garde avec la requête, uniquement en mémoire de session, pour la rejouer.
+    const onSendHeaders = (details) => {
+        const auth = headerValue(details.requestHeaders, 'authorization');
+        if (auth) pendingAuth.set(details.requestId, auth);
+        if (pendingAuth.size > 200) pendingAuth.delete(pendingAuth.keys().next().value);
+    };
+    const boxUrls = { urls: ['https://*.boxcloud.com/*', 'https://*.box.com/*'] };
+    try {
+        chrome.webRequest.onBeforeSendHeaders.addListener(onSendHeaders, boxUrls, ['requestHeaders', 'extraHeaders']);
+    } catch {
+        // Firefox ne connaît pas « extraHeaders » (et n'en a pas besoin)
+        chrome.webRequest.onBeforeSendHeaders.addListener(onSendHeaders, boxUrls, ['requestHeaders']);
+    }
+
+    chrome.webRequest.onCompleted.addListener((details) => {
+        const body = pendingBodies.get(details.requestId);
+        const auth = pendingAuth.get(details.requestId);
+        pendingBodies.delete(details.requestId);
+        pendingAuth.delete(details.requestId);
+        if (details.tabId < 0 || details.statusCode < 200 || details.statusCode >= 300) return;
+        if (!looksLikePdfResponse(details)) return;
+        rememberPdfRequest(details.tabId, {
+            url: details.url,
+            method: details.method,
+            body: body || null,
+            auth: auth || null,
+            time: Date.now()
+        });
+    }, { urls: PDF_WATCH_URLS }, ['responseHeaders']);
+
+    chrome.webRequest.onErrorOccurred.addListener((details) => {
+        pendingBodies.delete(details.requestId);
+        pendingAuth.delete(details.requestId);
+    }, { urls: PDF_WATCH_URLS });
+}
+
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+    const stored = await chrome.storage.session.get(PDF_REQUESTS_KEY);
+    const all = stored[PDF_REQUESTS_KEY];
+    if (all && all[tabId]) {
+        delete all[tabId];
+        await chrome.storage.session.set({ [PDF_REQUESTS_KEY]: all });
+    }
+});
+
+function replayInit(entry) {
+    const headers = entry.auth ? { Authorization: entry.auth } : undefined;
+    if (entry.method !== 'POST') return { method: 'GET', headers };
+    if (!entry.body) return null; // corps inconnu : impossible de rejouer
+    if (entry.body.formData) {
+        const params = new URLSearchParams();
+        for (const [key, values] of Object.entries(entry.body.formData)) values.forEach(v => params.append(key, v));
+        return { method: 'POST', body: params, headers };
+    }
+    return { method: 'POST', body: base64ToBytes(entry.body.raw), headers };
+}
+
+async function findPdfForTab(tabId) {
+    const stored = await chrome.storage.session.get(PDF_REQUESTS_KEY);
+    const list = (stored[PDF_REQUESTS_KEY] || {})[tabId] || [];
+    for (const entry of list) {
+        const init = replayInit(entry);
+        if (!init) continue;
+        try {
+            const pdf = await fetchPdfIfAny(entry.url, init);
+            if (pdf) return { ...pdf, url: entry.url };
+        } catch (err) {
+            console.warn('PDF replay failed:', entry.url, err);
+        }
+    }
+    return null;
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // PDF d'origine repéré dans le trafic réseau de l'onglet
+    if (request && request.type === 'IGPDF_FIND_PDF') {
+        const tabId = sender.tab && sender.tab.id;
+        if (tabId == null) {
+            sendResponse({ ok: false, error: 'onglet inconnu' });
+            return;
+        }
+        findPdfForTab(tabId).then(
+            pdf => sendResponse({ ok: true, pdf }),
+            err => sendResponse({ ok: false, error: String(err) })
+        );
+        return true;
+    }
+
+    if (request && request.type === 'IGPDF_FETCH_PDF') {
+        if (!/^https?:\/\//i.test(String(request.url || ''))) {
+            sendResponse({ ok: false, error: 'URL non autorisée' });
+            return;
+        }
+        fetchPdfIfAny(request.url).then(
+            pdf => sendResponse({ ok: true, pdf }),
+            err => sendResponse({ ok: false, error: String(err) })
+        );
+        return true;
+    }
+
+    if (request && request.type === 'IGPDF_FETCH') {
+        if (!/^https?:\/\//i.test(String(request.url || ''))) {
+            sendResponse({ ok: false, error: 'URL non autorisée' });
+            return;
+        }
+        fetchImageAsDataUrl(request.url).then(
+            dataUrl => sendResponse({ ok: true, dataUrl }),
+            err => sendResponse({ ok: false, error: String(err) })
+        );
+        return true;
+    }
+
     if (request.action === "openDevoirsPopup") {
         chrome.action.openPopup();
         return; // no async response needed
@@ -392,7 +643,7 @@ async function checkForGithubRelease() {
             chrome.notifications.create('igs_update_available', {
                 type: 'basic',
                 iconUrl: 'icons/icon128.png',
-                title: 'Igensia Extension: nouvelle version disponible',
+                title: 'Igensia Enhancer : nouvelle version disponible',
                 message: `Version ${latestTag} disponible. Cliquez pour ouvrir la release sur GitHub.`,
                 priority: 2
             });

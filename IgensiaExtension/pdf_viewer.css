@@ -1,0 +1,35 @@
+/* Bouton « Télécharger en PDF » injecté dans le visionneur (voir pdf_viewer.js) */
+#igpdf-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6px;
+  background: #260d66;
+  color: #fff;
+  font: 600 13px/1.2 system-ui, -apple-system, "Segoe UI", sans-serif;
+  cursor: pointer;
+  white-space: nowrap;
+  z-index: 2147483647;
+}
+
+#igpdf-btn:hover:not(:disabled) {
+  background: #3a1c8c;
+}
+
+#igpdf-btn:disabled {
+  opacity: 0.75;
+  cursor: progress;
+}
+
+/* Position de repli si la barre d'outils du visionneur n'est pas trouvée */
+#igpdf-btn.igpdf-floating {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  margin: 0;
+  padding: 10px 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}

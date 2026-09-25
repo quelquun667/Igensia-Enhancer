@@ -1,4 +1,19 @@
 # Journal des modifications
+## 2.7.0 - 2026-09-25
+### Nouveautés
+- **Télécharger en PDF** : bouton ajouté dans le visionneur de documents de MonCampus (Box) quand le téléchargement est bloqué
+  - Récupère le fichier PDF d'origine, avec le texte sélectionnable et son vrai nom (sinon le nom est demandé)
+  - En dernier recours, PDF reconstitué à partir de captures des pages
+  - Masqué quand le document est déjà téléchargeable, fonctionne aussi sur les documents d'une page
+  - Activable/désactivable dans Paramètres → Outils
+  - Adapté de l'extension « PDF Picture » de [@ItzSized](https://github.com/ItzSized)
+- **Recherche dans tout l'emploi du temps** : panneau de résultats sur 10 mois (dates, horaires, salle, prof), un clic affiche la semaine du cours
+- **Bannière de mise à jour** en haut du popup quand une nouvelle version est disponible
+
+### Permissions
+- `webRequest` et accès à `box.com` / `boxcloud.com` : repérer et récupérer le fichier PDF chargé par le visionneur
+- Accès à tous les sous-domaines `igensia-education.fr` / `igensia.com` (visionneur de documents)
+
 ## 2.6.2 - 2026-09-24
 ### Corrections
 - **Plus d'avertissement dans Chrome/Edge** : le manifest ne contient plus les clés propres à Firefox (`background.scripts`, `browser_specific_settings`)

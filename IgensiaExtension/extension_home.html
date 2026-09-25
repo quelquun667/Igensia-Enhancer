@@ -27,6 +27,16 @@
     <main>
         <!-- ============ Accueil ============ -->
         <section id="view-home" class="view" aria-label="Accueil">
+            <div id="update-banner" class="update-banner" role="status" hidden>
+                <span data-icon="download"></span>
+                <span class="update-banner-text">
+                    <strong id="update-banner-title">Nouvelle version disponible</strong>
+                    <span>Découvre les nouveautés sur GitHub.</span>
+                </span>
+                <button id="update-banner-open" class="btn btn-primary btn-sm" type="button">Voir</button>
+                <button id="update-banner-close" class="action-btn" type="button" aria-label="Ignorer cette mise à jour"><span data-icon="x"></span></button>
+            </div>
+
             <article class="card" aria-labelledby="courses-title">
                 <div class="card-header">
                     <h2 id="courses-title" class="card-title"><span data-icon="calendar"></span>Cours</h2>
@@ -136,6 +146,17 @@
                     <button type="button" class="segment" role="radio" data-theme="dark"><span data-icon="moon"></span>Sombre</button>
                     <button type="button" class="segment" role="radio" data-theme="system"><span data-icon="monitor"></span>Système</button>
                 </div>
+            </article>
+
+            <article class="card">
+                <h2 class="card-title"><span data-icon="book"></span>Outils</h2>
+                <label class="toggle-row" for="pdf-button-toggle">
+                    <span>
+                        <span class="setting-title">Bouton « Télécharger en PDF »</span>
+                        <span class="setting-label">Ajouté dans le visionneur de documents de MonCampus, même quand le téléchargement est bloqué.</span>
+                    </span>
+                    <input type="checkbox" id="pdf-button-toggle" class="switch" role="switch">
+                </label>
             </article>
 
             <article class="card">

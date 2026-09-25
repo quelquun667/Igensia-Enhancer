@@ -4,9 +4,9 @@
 
 # Igensia Enhancer
 
-## Version: 2.6.2
+## Version: 2.7.0
 
-Extension de navigateur (Chrome, Edge, Firefox) pour MonCampus Igensia : ton prochain cours et tes dernières notes en un clic, un suivi de devoirs par matière, et des outils en plus sur les pages de notes et d'absences.
+Extension de navigateur (Chrome, Edge, Firefox) pour MonCampus Igensia : ton prochain cours et tes dernières notes en un clic, un suivi de devoirs par matière, le téléchargement des documents en PDF, et des outils en plus sur les pages de notes, d'absences et d'emploi du temps.
 
 Le code de l'extension se trouve dans le dossier `IgensiaExtension`.
 
@@ -42,6 +42,17 @@ Ce README explique comment télécharger le projet et l'importer dans un navigat
 	- Matière à choisir parmi celles du relevé et de l'EDT, filtre par matière
 	- Échéance suggérée au prochain cours de la matière, échéances colorées (en retard, aujourd'hui, demain)
 
+- Documents en PDF (visionneur de MonCampus)
+	- Bouton « Télécharger en PDF » sur les documents dont le téléchargement est bloqué
+	- Récupère le fichier PDF d'origine (texte sélectionnable) et son vrai nom ; sinon demande le nom
+	- En dernier recours, PDF reconstitué à partir de captures des pages
+	- Masqué quand le document est déjà téléchargeable ; activable/désactivable dans les paramètres
+	- Adapté de l'extension « PDF Picture » de [@ItzSized](https://github.com/ItzSized)
+
+- Emploi du temps
+	- Recherche dans tout l'emploi du temps (2 mois passés, 8 mois à venir), pas seulement la semaine affichée
+	- Un clic sur un résultat affiche la semaine du cours
+
 - Notes (pages MonCampus/Wigor)
 	- Calcul automatique de la moyenne pondérée (GPA) et du pourcentage de modules validés
 	- Tri rapide par « Validés », « Non Validés », « Date » ou « Ordre normal »
@@ -75,7 +86,7 @@ Ce README explique comment télécharger le projet et l'importer dans un navigat
 
 - Mises à jour
 	- Vérification automatique toutes les 6h via le manifest distant (GitHub)
-	- Badge sur le bouton « Paramètres » quand une nouvelle version est disponible
+	- Notification, bannière dans le popup et badge sur le bouton « Paramètres » quand une nouvelle version est disponible
 	- Actions dans les paramètres: « Voir » (ouvrir GitHub) ou « Ignorer » (retirer le badge)
 
 - Paramètres et thème
@@ -86,7 +97,8 @@ Ce README explique comment télécharger le projet et l'importer dans un navigat
 
 - Vie privée
 	- Données stockées localement dans le navigateur; aucune télémétrie
-	- Permissions limitées aux domaines MonCampus/Wigor (dont `cas-p.wigorservices.net`, le serveur de connexion, pour se reconnecter automatiquement) et à GitHub (pour la vérification de mise à jour)
+	- Permissions limitées aux domaines MonCampus/Wigor (dont `cas-p.wigorservices.net`, le serveur de connexion, pour se reconnecter automatiquement), à Box (`box.com`, `boxcloud.com` : visionneur de documents, pour le téléchargement en PDF) et à GitHub (pour la vérification de mise à jour)
+	- `webRequest` sert uniquement à repérer le fichier PDF chargé par le visionneur ; rien n'est envoyé ailleurs
 
 ## Prérequis
 

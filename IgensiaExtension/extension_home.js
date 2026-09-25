@@ -74,6 +74,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // ============ Outils ============
+    // Bouton « Télécharger en PDF » du visionneur (pdf_viewer.js), activé par défaut
+    const pdfToggle = document.getElementById('pdf-button-toggle');
+    chrome.storage.sync.get('igs_pdf_button', (data) => { pdfToggle.checked = data.igs_pdf_button !== false; });
+    pdfToggle.addEventListener('change', () => chrome.storage.sync.set({ igs_pdf_button: pdfToggle.checked }));
+
     // ============ Mises à jour ============
     const checkUpdateBtn = document.getElementById('settings-check-update-btn');
     const updateStatus = document.getElementById('update-status');
@@ -129,10 +135,28 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!flag || !flag.ok || !flag.value) return;
             settingsBadge.hidden = false;
             const result = await popupSendMessage({ action: 'run_check_remote_manifest' }, 8000);
-            if (result && result.ok && result.updated) showUpdateResult(result);
-            else settingsBadge.hidden = true;
+            if (result && result.ok && result.updated) {
+                showUpdateResult(result);
+                updateBannerTitle.textContent = `Nouvelle version disponible : v${result.remoteVersion}`;
+                updateBanner.hidden = false;
+            } else {
+                settingsBadge.hidden = true;
+            }
         } catch (e) { }
     })();
+
+    // Bannière de l'accueil (même flag que le point sur l'engrenage)
+    const updateBanner = document.getElementById('update-banner');
+    const updateBannerTitle = document.getElementById('update-banner-title');
+    document.getElementById('update-banner-open').addEventListener('click', () => {
+        openTab(`${REPO_URL}/releases/latest`);
+    });
+    document.getElementById('update-banner-close').addEventListener('click', async () => {
+        try { await popupSendMessage({ action: 'clear_update_flag' }); } catch (e) { }
+        updateBanner.hidden = true;
+        settingsBadge.hidden = true;
+        updateStatus.hidden = true;
+    });
 
     // ============ Temps passé ============
     // Clé YYYY-MM-DD en heure locale (même format que getTodayKey dans background.js)

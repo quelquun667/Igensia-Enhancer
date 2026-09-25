@@ -1,15 +1,16 @@
 {
   "manifest_version": 3,
   "name": "Igensia Enhancer",
-  "version": "2.6.2",
-  "description": "Améliore MonCampus Igensia : prochain cours, dernières notes, GPA et simulateur, devoirs par matière, absences.",
+  "version": "2.7.0",
+  "description": "Améliore MonCampus Igensia : prochain cours, dernières notes, GPA et simulateur, devoirs par matière, absences, téléchargement des documents en PDF.",
   "permissions": [
     "activeTab",
     "scripting",
     "storage",
     "alarms",
     "notifications",
-    "tabs"
+    "tabs",
+    "webRequest"
   ],
   "host_permissions": [
     "https://moncampus.igensia-education.fr/*",
@@ -18,7 +19,11 @@
     "https://eabsences-igs.wigorservices.net/*",
     "https://cas-p.wigorservices.net/*",
     "https://api.github.com/repos/quelquun667/Igensia-Enhancer/releases/*",
-    "https://raw.githubusercontent.com/quelquun667/Igensia-Enhancer/*"
+    "https://raw.githubusercontent.com/quelquun667/Igensia-Enhancer/*",
+    "https://*.igensia-education.fr/*",
+    "https://*.igensia.com/*",
+    "https://*.box.com/*",
+    "https://*.boxcloud.com/*"
   ],
   "content_scripts": [
     {
@@ -73,6 +78,32 @@
       "css": [
         "search.css"
       ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://*.igensia-education.fr/*",
+        "https://*.igensia.com/*"
+      ],
+      "js": [
+        "pdf_timing.js"
+      ],
+      "all_frames": true,
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://*.igensia-education.fr/*",
+        "https://*.igensia.com/*"
+      ],
+      "js": [
+        "lib/jspdf.umd.min.js",
+        "pdf_viewer.js"
+      ],
+      "css": [
+        "pdf_viewer.css"
+      ],
+      "all_frames": true,
       "run_at": "document_idle"
     }
   ],
