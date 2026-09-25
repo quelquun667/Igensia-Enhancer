@@ -1,4 +1,8 @@
 # Journal des modifications
+## 2.7.1 - 2026-09-25
+### Corrections
+- **Bouton « Télécharger en PDF »** : n'apparaît plus sur les pages sans document (liste des formations, parcours), et disparaît en quittant un document sans recharger la page
+
 ## 2.7.0 - 2026-09-25
 ### Nouveautés
 - **Télécharger en PDF** : bouton ajouté dans le visionneur de documents de MonCampus (Box) quand le téléchargement est bloqué

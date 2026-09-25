@@ -4,7 +4,7 @@
 
 # Igensia Enhancer
 
-## Version: 2.7.0
+## Version: 2.7.1
 
 Extension de navigateur (Chrome, Edge, Firefox) pour MonCampus Igensia : ton prochain cours et tes dernières notes en un clic, un suivi de devoirs par matière, le téléchargement des documents en PDF, et des outils en plus sur les pages de notes, d'absences et d'emploi du temps.
 

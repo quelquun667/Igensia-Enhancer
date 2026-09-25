@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Igensia Enhancer",
-  "version": "2.7.0",
+  "version": "2.7.1",
   "description": "Améliore MonCampus Igensia : prochain cours, dernières notes, GPA et simulateur, devoirs par matière, absences, téléchargement des documents en PDF.",
   "permissions": [
     "activeTab",

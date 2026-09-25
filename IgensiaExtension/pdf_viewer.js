@@ -135,10 +135,21 @@
   // seule page, Box masque l'indicateur « 1 / 1 » : une page dans un de ces conteneurs suffit.
   const VIEWER_CONTAINERS = '.bp, .bp-doc, .bp-content, .pdfViewer, [data-page-number]';
 
+  // Les simples grandes images (cartes de la liste des formations…) ne suffisent pas :
+  // il faut une page dans un conteneur de visionneur connu, ou une page qui partage un
+  // bloc proche avec l'indicateur « 3 / 7 » (visionneur non reconnu).
   function viewerDetected() {
-    if (getPageInfo()) return true;
     const pages = getPageElements(document);
-    return pages.length >= 2 || pages.some((el) => el.closest(VIEWER_CONTAINERS));
+    if (!pages.length) return false;
+    if (pages.some((el) => el.closest(VIEWER_CONTAINERS))) return true;
+    const info = getPageInfo();
+    if (!info) return false;
+    let block = info.el;
+    for (let i = 0; i < 8 && block.parentElement; i++) {
+      block = block.parentElement;
+      if (pages.some((el) => block.contains(el))) return true;
+    }
+    return false;
   }
 
   // ---------------------------------------------------------------------------
@@ -644,7 +655,12 @@
       if (existing && !running) existing.remove();
       return;
     }
-    if (existing || !viewerDetected()) return;
+    if (!viewerDetected()) {
+      // Navigation interne (document → liste des formations) : retirer le bouton
+      if (existing && !running) existing.remove();
+      return;
+    }
+    if (existing) return;
     const btn = document.createElement('button');
     btn.id = BTN_ID;
     btn.type = 'button';
