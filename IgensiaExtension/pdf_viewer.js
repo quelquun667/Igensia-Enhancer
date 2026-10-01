@@ -402,6 +402,8 @@
     for (const r of performance.getEntriesByType('resource')) {
       if (PDF_URL.test(r.name)) add(r.name, 3);
       else if (STATIC_URL.test(r.name)) continue;
+      // API internes du site (JSON) : à ne pas rappeler, sauf si elles évoquent un fichier
+      else if (/\/api\//i.test(r.name) && !/api\.box\.com|document|file|download|pdf/i.test(r.name)) continue;
       // Métadonnées de l'API Box (JSON), pas le document
       else if (/\/\/api\.box\.com\//i.test(r.name) && !/\/content(\?|$)/i.test(r.name)) continue;
       else if (!/^(img|css|link|script|beacon|audio|video|track|icon)$/.test(r.initiatorType)) {
@@ -414,18 +416,43 @@
   }
 
   // Réponse PDF vue passer dans le trafic réseau de l'onglet (background, chrome.webRequest)
+  // Renvoie { pdf, fileId } : fileId = fichier Box affiché dans cet onglet (s'il est connu)
   function findPdfInTabTraffic() {
     return new Promise((resolve) => {
       try {
         chrome.runtime.sendMessage({ type: 'IGPDF_FIND_PDF' }, (res) => {
-          if (chrome.runtime.lastError || !res?.ok || !res.pdf) return resolve(null);
-          const bytes = dataUrlToBytes(res.pdf.dataUrl);
-          resolve(isPdfBytes(bytes) ? { bytes, filename: res.pdf.filename, url: res.pdf.url } : null);
+          if (chrome.runtime.lastError || !res?.ok) return resolve({ pdf: null, fileId: null, name: '' });
+          let pdf = null;
+          if (res.pdf) {
+            const bytes = dataUrlToBytes(res.pdf.dataUrl);
+            if (isPdfBytes(bytes)) pdf = { bytes, filename: res.pdf.filename, url: res.pdf.url };
+          }
+          resolve({ pdf, fileId: res.fileId || null, name: res.name || '' });
         });
       } catch {
-        resolve(null);
+        resolve({ pdf: null, fileId: null, name: '' });
       }
     });
+  }
+
+  // Nombre de pages d'un PDF (objets « /Type /Page »). null si on ne peut pas le savoir
+  // (pages rangées dans des flux compressés) : la vérification est alors ignorée.
+  function pdfPageCount(bytes) {
+    const text = new TextDecoder('latin1').decode(bytes);
+    const count = (text.match(/\/Type\s*\/Page(?![A-Za-z])/g) || []).length;
+    return count || null;
+  }
+
+  // Le PDF trouvé correspond-il au document affiché ? (nombre de pages de l'indicateur « 1 / 7 »)
+  function matchesViewer(pdf) {
+    const total = getPageInfo()?.total;
+    const count = pdfPageCount(pdf.bytes);
+    return !total || !count || total === count;
+  }
+
+  function boxFileIdOf(url) {
+    const m = String(url || '').match(/(?:internal_files|\/files)\/(\d{5,})/);
+    return m ? m[1] : null;
   }
 
   // Téléchargement depuis la page elle-même : mêmes droits (CORS, cookies) que le
@@ -464,14 +491,21 @@
     }
   }
 
+  // Fichier Box affiché et son nom, renseignés par findRealPdf (servent aux pages en images)
+  let boxInfo = { fileId: null, name: '' };
+
   async function findRealPdf() {
-    const fromTraffic = await findPdfInTabTraffic();
-    if (fromTraffic) return fromTraffic;
-    // Secours : ressources chargées par la page
-    const candidates = pdfCandidates();
+    const { pdf: fromTraffic, fileId, name } = await findPdfInTabTraffic();
+    boxInfo = { fileId, name };
+    if (fromTraffic && matchesViewer(fromTraffic)) return fromTraffic;
+    // Secours : ressources chargées par la page, sans les fichiers Box d'un autre document
+    const candidates = pdfCandidates().filter((url) => {
+      const id = boxFileIdOf(url);
+      return !fileId || !id || id === fileId;
+    });
     for (const url of candidates) {
       const pdf = (await fetchPdfDirect(url)) || (await fetchPdfViaBackground(url));
-      if (pdf) return pdf;
+      if (pdf && matchesViewer(pdf)) return pdf;
     }
     // Diagnostic : à copier depuis la console (F12) si le PDF n'est pas trouvé
     console.warn("[Igensia PDF] Fichier d'origine introuvable. Candidats essayés :", candidates);
@@ -559,10 +593,59 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Documents dont Box bloque le téléchargement : il ne les affiche qu'en images de
+  // pages (représentation « png_paged_2048x2048 ») et n'envoie jamais le PDF ni son
+  // texte au navigateur. On récupère alors chaque page en pleine résolution à partir
+  // de l'adresse de la page 1 (le texte ne peut pas être sélectionnable).
+  // ---------------------------------------------------------------------------
+  const BOX_PAGED = /\/internal_files\/(\d+)\/versions\/\d+\/representations\/(?:png|jpg)_paged_(\d+)x\d+\/content\/(\d+)\.(png|jpe?g)/i;
+  const MAX_BOX_PAGES = 500;
+
+  function findBoxPagedImages(fileId) {
+    const found = [];
+    for (const r of performance.getEntriesByType('resource')) {
+      const m = r.name.match(BOX_PAGED);
+      if (m) found.push({ url: r.name, fileId: m[1], size: +m[2], time: r.startTime });
+    }
+    if (!found.length) return null;
+    // Fichier inconnu : celui dont une page a été chargée le plus récemment
+    const target = fileId || found.reduce((a, b) => (b.time > a.time ? b : a)).fileId;
+    const mine = found.filter((f) => f.fileId === target);
+    if (!mine.length) return null;
+    const best = mine.reduce((a, b) => (b.size > a.size ? b : a));
+    // « …/content/1.png?… » → « …/content/{page}.png?… » (le jeton reste dans la requête)
+    const template = best.url.replace(/\/content\/\d+\.(png|jpe?g)/i, (m0, ext) => `/content/{page}.${ext}`);
+    return { fileId: target, template };
+  }
+
+  async function fetchBoxPages(paged, total, onProgress) {
+    const list = [];
+    const last = total || MAX_BOX_PAGES;
+    for (let page = 1; page <= last; page++) {
+      let dataUrl;
+      try {
+        dataUrl = await fetchViaBackground(paged.template.replace('{page}', String(page)));
+      } catch (e) {
+        if (!total && page > 1) break; // nombre de pages inconnu : fin du document
+        throw e;
+      }
+      const img = await loadImage(dataUrl);
+      list.push({ ...toJpeg(img, img.naturalWidth, img.naturalHeight), order: page });
+      onProgress(list.length);
+    }
+    return list;
+  }
+
+  // ---------------------------------------------------------------------------
   // Orchestration
   // ---------------------------------------------------------------------------
   async function run() {
     if (running) return;
+    // Extension rechargée ou mise à jour : ce script n'est plus relié à l'extension
+    if (!chrome.runtime?.id) {
+      alert('Igensia Enhancer a été mis à jour : recharge la page (F5) pour utiliser ce bouton.');
+      return;
+    }
     running = true;
     const btn = document.getElementById(BTN_ID);
     const setLabel = (txt) => { if (btn) btn.textContent = txt; };
@@ -573,9 +656,28 @@
       setLabel('Recherche du PDF…');
       const real = await findRealPdf();
       if (real) {
+        console.info(`[Igensia PDF] Source : fichier PDF d'origine (texte copiable)${boxInfo.fileId ? ` — fichier Box ${boxInfo.fileId}` : ''}`);
         const name = chooseFilename(real);
         if (name) saveBytes(real.bytes, name);
         return;
+      }
+
+      if (!window.jspdf?.jsPDF) throw new Error('jsPDF est introuvable (lib/jspdf.umd.min.js).');
+      const total = getPageInfo()?.total ?? null;
+
+      // Document affiché en images par Box : pages récupérées en pleine résolution
+      const paged = findBoxPagedImages(boxInfo.fileId);
+      if (paged) {
+        console.info(`[Igensia PDF] Source : images des pages Box (fichier ${paged.fileId}) — Box n'envoie pas de PDF ni de texte pour ce document`);
+        const list = await fetchBoxPages(paged, total, (n) => setLabel(`Pages… ${n}${total ? ` / ${total}` : ''}`));
+        if (list.length) {
+          const filename = cleanFilename(boxInfo.name) || askFilename();
+          if (!filename) return;
+          setLabel('Génération du PDF…');
+          await sleep(50);
+          buildPdf(list, filename);
+          return;
+        }
       }
 
       // Pas de fichier d'origine : PDF reconstitué à partir de captures des pages
@@ -583,11 +685,9 @@
           'Créer un PDF à partir de captures des pages ? Le texte ne sera pas sélectionnable.')) {
         return;
       }
-      if (!window.jspdf?.jsPDF) throw new Error('jsPDF est introuvable (lib/jspdf.umd.min.js).');
 
       const pages = new Map();
       const errors = [];
-      const total = getPageInfo()?.total ?? null;
       const onProgress = (n) => setLabel(`Capture… ${n}${total ? ` / ${total}` : ''}`);
 
       const container = findScrollContainer();
@@ -619,7 +719,11 @@
       if (errors.length) console.warn('[Igensia PDF] Pages en erreur :', errors);
     } catch (e) {
       console.error('[Igensia PDF]', e);
-      alert(`Échec de l'export PDF : ${e.message}`);
+      if (/context invalidated/i.test(e.message)) {
+        alert('Igensia Enhancer a été mis à jour : recharge la page (F5) pour utiliser ce bouton.');
+      } else {
+        alert(`Échec de l'export PDF : ${e.message}`);
+      }
     } finally {
       running = false;
       if (btn) btn.disabled = false;

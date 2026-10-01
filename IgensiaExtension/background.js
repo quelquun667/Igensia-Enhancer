@@ -113,20 +113,59 @@ function looksLikePdfResponse(details) {
         !/json|html|image\/|text\/|javascript|font/i.test(type);
 }
 
+// Identifiant du fichier Box dans une URL : api.box.com/2.0/files/<id> ou
+// dl.boxcloud.com/api/2.0/internal_files/<id>/versions/…
+function boxFileId(url) {
+    const m = String(url || '').match(/(?:internal_files|\/files)\/(\d{5,})/);
+    return m ? m[1] : null;
+}
+
+// Plusieurs documents peuvent s'afficher dans le même onglet (onglets d'un module) :
+// on retient le dernier fichier Box consulté par onglet, et le jeton du visionneur,
+// pour renvoyer le PDF du document affiché et pas celui d'un autre.
+const BOX_STATE_KEY = 'igs_box_state';
+
 let pdfStoreQueue = Promise.resolve();
-function rememberPdfRequest(tabId, entry) {
+function updatePdfStore(mutate) {
     pdfStoreQueue = pdfStoreQueue.then(async () => {
-        const stored = await chrome.storage.session.get(PDF_REQUESTS_KEY);
-        const all = stored[PDF_REQUESTS_KEY] || {};
-        const list = (all[tabId] || []).filter(e => !(e.url === entry.url && e.method === entry.method));
-        list.unshift(entry);
-        all[tabId] = list.slice(0, MAX_PDF_REQUESTS_PER_TAB);
-        await chrome.storage.session.set({ [PDF_REQUESTS_KEY]: all });
+        const stored = await chrome.storage.session.get([PDF_REQUESTS_KEY, BOX_STATE_KEY]);
+        const requests = stored[PDF_REQUESTS_KEY] || {};
+        const boxState = stored[BOX_STATE_KEY] || {};
+        mutate(requests, boxState);
+        await chrome.storage.session.set({ [PDF_REQUESTS_KEY]: requests, [BOX_STATE_KEY]: boxState });
     }).catch(err => console.warn('PDF requests store error:', err));
+    return pdfStoreQueue;
+}
+
+function rememberPdfRequest(tabId, entry) {
+    updatePdfStore((requests) => {
+        const list = (requests[tabId] || []).filter(e => !(e.url === entry.url && e.method === entry.method));
+        list.unshift(entry);
+        requests[tabId] = list.slice(0, MAX_PDF_REQUESTS_PER_TAB);
+    });
+}
+
+function rememberBoxFile(tabId, fileId, auth) {
+    updatePdfStore((requests, boxState) => {
+        const previous = boxState[tabId] || {};
+        boxState[tabId] = { fileId, auth: auth || previous.auth || null, time: Date.now() };
+    });
+}
+
+function forgetTab(tabId) {
+    return updatePdfStore((requests, boxState) => {
+        delete requests[tabId];
+        delete boxState[tabId];
+    });
 }
 
 if (chrome.webRequest) {
     chrome.webRequest.onBeforeRequest.addListener((details) => {
+        // Nouvelle page dans l'onglet : les PDF de la page précédente ne comptent plus
+        if (details.type === 'main_frame') {
+            if (details.tabId >= 0) forgetTab(details.tabId);
+            return;
+        }
         if (details.method !== 'POST' || !details.requestBody) return;
         const body = details.requestBody;
         if (body.formData) {
@@ -137,12 +176,14 @@ if (chrome.webRequest) {
         if (pendingBodies.size > 200) pendingBodies.delete(pendingBodies.keys().next().value);
     }, { urls: PDF_WATCH_URLS }, ['requestBody']);
 
-    // Box peut exiger le jeton d'accès du visionneur (Authorization: Bearer …) :
-    // on le garde avec la requête, uniquement en mémoire de session, pour la rejouer.
+    // Box : jeton du visionneur (Authorization: Bearer …) et fichier consulté. Le jeton
+    // n'est gardé qu'en mémoire de session, pour cet onglet.
     const onSendHeaders = (details) => {
         const auth = headerValue(details.requestHeaders, 'authorization');
         if (auth) pendingAuth.set(details.requestId, auth);
         if (pendingAuth.size > 200) pendingAuth.delete(pendingAuth.keys().next().value);
+        const fileId = boxFileId(details.url);
+        if (details.tabId >= 0 && fileId) rememberBoxFile(details.tabId, fileId, auth);
     };
     const boxUrls = { urls: ['https://*.boxcloud.com/*', 'https://*.box.com/*'] };
     try {
@@ -164,6 +205,7 @@ if (chrome.webRequest) {
             method: details.method,
             body: body || null,
             auth: auth || null,
+            fileId: boxFileId(details.url),
             time: Date.now()
         });
     }, { urls: PDF_WATCH_URLS }, ['responseHeaders']);
@@ -174,14 +216,7 @@ if (chrome.webRequest) {
     }, { urls: PDF_WATCH_URLS });
 }
 
-chrome.tabs.onRemoved.addListener(async (tabId) => {
-    const stored = await chrome.storage.session.get(PDF_REQUESTS_KEY);
-    const all = stored[PDF_REQUESTS_KEY];
-    if (all && all[tabId]) {
-        delete all[tabId];
-        await chrome.storage.session.set({ [PDF_REQUESTS_KEY]: all });
-    }
-});
+chrome.tabs.onRemoved.addListener((tabId) => { forgetTab(tabId); });
 
 function replayInit(entry) {
     const headers = entry.auth ? { Authorization: entry.auth } : undefined;
@@ -195,10 +230,41 @@ function replayInit(entry) {
     return { method: 'POST', body: base64ToBytes(entry.body.raw), headers };
 }
 
-async function findPdfForTab(tabId) {
-    const stored = await chrome.storage.session.get(PDF_REQUESTS_KEY);
-    const list = (stored[PDF_REQUESTS_KEY] || {})[tabId] || [];
-    for (const entry of list) {
+// « Cours SQL.docx » → « Cours SQL.pdf »
+function boxNameToPdf(name) {
+    const base = String(name || '').replace(/\.[a-z0-9]{1,5}$/i, '').trim();
+    return base ? `${base}.pdf` : '';
+}
+
+// PDF d'un fichier Box précis, demandé à l'API avec le jeton du visionneur :
+// la représentation « pdf » (celle qu'affiche le visionneur), sinon le fichier
+// d'origine (seulement si le téléchargement est autorisé).
+async function fetchBoxFilePdf(fileId, auth) {
+    if (!auth) return null;
+    try {
+        const meta = await fetch(`https://api.box.com/2.0/files/${fileId}?fields=name,representations`, {
+            headers: { Authorization: auth, 'X-Rep-Hints': '[pdf]' }
+        });
+        if (!meta.ok) return null;
+        const info = await meta.json();
+        const name = boxNameToPdf(info.name);
+        const reps = (info.representations && info.representations.entries) || [];
+        const rep = reps.find(r => r.representation === 'pdf' && r.content && r.content.url_template);
+        if (rep) {
+            const url = rep.content.url_template.replace('{+asset_path}', '');
+            const pdf = await fetchPdfIfAny(url, { headers: { Authorization: auth } });
+            if (pdf) return { ...pdf, filename: name || pdf.filename, url };
+        }
+        const original = await fetchPdfIfAny(`https://api.box.com/2.0/files/${fileId}/content`, { headers: { Authorization: auth } });
+        if (original) return { ...original, filename: name || original.filename, url: '' };
+    } catch (err) {
+        console.warn('Box file fetch failed:', fileId, err);
+    }
+    return null;
+}
+
+async function replayEntries(entries) {
+    for (const entry of entries) {
         const init = replayInit(entry);
         if (!init) continue;
         try {
@@ -211,6 +277,35 @@ async function findPdfForTab(tabId) {
     return null;
 }
 
+async function findPdfForTab(tabId) {
+    await pdfStoreQueue; // laisser finir les écritures en cours
+    const stored = await chrome.storage.session.get([PDF_REQUESTS_KEY, BOX_STATE_KEY]);
+    const list = (stored[PDF_REQUESTS_KEY] || {})[tabId] || [];
+    const box = (stored[BOX_STATE_KEY] || {})[tabId];
+
+    if (box && box.fileId) {
+        // Document Box affiché : uniquement son PDF, jamais celui d'un autre fichier
+        const fromApi = await fetchBoxFilePdf(box.fileId, box.auth);
+        if (fromApi) return { pdf: fromApi, fileId: box.fileId, name: fromApi.filename };
+        const name = await fetchBoxFileName(box.fileId, box.auth);
+        const replayed = await replayEntries(list.filter(e => e.fileId === box.fileId));
+        if (replayed && !replayed.filename) replayed.filename = name;
+        // Sans PDF (document affiché en images par Box), le nom sert aux pages récupérées
+        return { pdf: replayed, fileId: box.fileId, name };
+    }
+    return { pdf: await replayEntries(list), fileId: null, name: '' };
+}
+
+async function fetchBoxFileName(fileId, auth) {
+    if (!auth) return '';
+    try {
+        const meta = await fetch(`https://api.box.com/2.0/files/${fileId}?fields=name`, { headers: { Authorization: auth } });
+        return meta.ok ? boxNameToPdf((await meta.json()).name) : '';
+    } catch {
+        return ''; // nom facultatif
+    }
+}
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     // PDF d'origine repéré dans le trafic réseau de l'onglet
     if (request && request.type === 'IGPDF_FIND_PDF') {
@@ -220,7 +315,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             return;
         }
         findPdfForTab(tabId).then(
-            pdf => sendResponse({ ok: true, pdf }),
+            ({ pdf, fileId, name }) => sendResponse({ ok: true, pdf, fileId, name }),
             err => sendResponse({ ok: false, error: String(err) })
         );
         return true;

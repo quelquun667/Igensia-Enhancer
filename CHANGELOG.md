@@ -1,4 +1,11 @@
 # Journal des modifications
+## 2.7.2 - 2026-10-01
+### Corrections
+- **Télécharger en PDF, plusieurs documents dans un module** : le bouton télécharge le document affiché, et plus le PDF d'un autre onglet du module
+- **Documents affichés en images par Box** (téléchargement bloqué) : les pages sont récupérées en pleine résolution au lieu d'être photographiées à l'écran, et le fichier porte son vrai nom
+- **Nom du fichier** : repris de Box quand c'est possible, plus besoin de le saisir
+- **Message clair** quand l'extension vient d'être mise à jour et qu'il faut recharger la page
+
 ## 2.7.1 - 2026-09-25
 ### Corrections
 - **Bouton « Télécharger en PDF »** : n'apparaît plus sur les pages sans document (liste des formations, parcours), et disparaît en quittant un document sans recharger la page
