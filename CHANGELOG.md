@@ -1,4 +1,9 @@
 # Journal des modifications
+## 2.7.3 - 2026-10-08
+### Corrections
+- **Bouton « Télécharger en PDF » qui disparaissait** : un lien contenant « download » dans le texte du document, ou une icône de téléchargement ailleurs sur la page (barre latérale, icône cachée ou désactivée), était pris pour le bouton de téléchargement de MonCampus. Seul l'en-tête du document compte désormais
+- **Diagnostic** : la console indique pourquoi le bouton est masqué
+
 ## 2.7.2 - 2026-10-01
 ### Corrections
 - **Télécharger en PDF, plusieurs documents dans un module** : le bouton télécharge le document affiché, et plus le PDF d'un autre onglet du module

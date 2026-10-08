@@ -736,35 +736,80 @@
   // ---------------------------------------------------------------------------
   let enabled = false;
 
-  // Le visionneur propose déjà un bouton « Télécharger » : le nôtre ne sert à rien
+  // Zone du document : le visionneur et son en-tête (où MonCampus place ses icônes
+  // imprimer / télécharger), sans le reste de la page (menus, barre latérale, ressources…)
+  function documentArea() {
+    const pages = getPageElements(document);
+    const page = pages.find((el) => el.closest(VIEWER_CONTAINERS)) || pages[0];
+    if (!page) return null;
+    let area = page.closest('.bp') || page.closest(VIEWER_CONTAINERS) || page.parentElement;
+    const width = area.getBoundingClientRect().width;
+    for (let i = 0; i < 6 && area.parentElement && area.parentElement !== document.body; i++) {
+      // Un parent nettement plus large englobe autre chose que le document : on s'arrête
+      if (area.parentElement.getBoundingClientRect().width > width * 1.3 + 40) break;
+      area = area.parentElement;
+    }
+    return area;
+  }
+
+  function isActuallyVisible(el) {
+    if (!el.getClientRects().length) return false;
+    const style = getComputedStyle(el);
+    return style.visibility !== 'hidden' && parseFloat(style.opacity) > 0.05 && style.pointerEvents !== 'none';
+  }
+
+  // Le visionneur propose déjà un bouton « Télécharger » : le nôtre ne sert à rien.
+  // Renvoie l'élément trouvé (pour le diagnostic) ou null.
   const DOWNLOAD_WORDS = /t[ée]l[ée]charg|download/i;
-  function nativeDownloadAvailable() {
-    const candidates = document.querySelectorAll('a[download], button, a, [role="button"], [title], [aria-label], mat-icon, i, span.material-icons, span.material-symbols-outlined');
+  // Pages rendues par le visionneur (PDF.js / Box) : texte et liens du document
+  const DOCUMENT_CONTENT = '.pdfViewer, .textLayer, .annotationLayer, .bp .page, .bp [data-page-number], .bp-image, .bp-images-wrapper';
+  function nativeDownloadControl() {
+    const area = documentArea();
+    if (!area) return null;
+    const candidates = area.querySelectorAll('a[download], button, a, [role="button"], [title], [aria-label], mat-icon, i, span.material-icons, span.material-symbols-outlined');
     for (const el of candidates) {
-      if (el.closest(`#${BTN_ID}`) || !el.getClientRects().length) continue;
-      if (el.disabled || el.getAttribute('aria-disabled') === 'true') continue;
+      if (el.closest(`#${BTN_ID}`) || !isActuallyVisible(el)) continue;
+      if (el.closest('[disabled], [aria-disabled="true"], .disabled, .is-disabled')) continue;
+      // Contenu du document (texte, liens du PDF comme « …/download/… ») : ce n'est pas un bouton
+      if (el.closest(DOCUMENT_CONTENT)) continue;
       const cls = typeof el.className === 'string' ? el.className : (el.className?.baseVal || '');
-      const label = `${el.getAttribute('aria-label') || ''} ${el.getAttribute('title') || ''} ${cls}`;
+      // Les adresses web ne sont pas des libellés (title="https://ubuntu.com/download/…")
+      const label = `${el.getAttribute('aria-label') || ''} ${el.getAttribute('title') || ''} ${cls}`
+        .replace(/https?:\/\/\S+/gi, '');
       // Icônes Material : le nom de l'icône est le texte de l'élément
       const iconText = el.children.length === 0 ? (el.textContent || '').trim() : '';
-      if (el.hasAttribute('download') || DOWNLOAD_WORDS.test(label) || /^(file_)?download$/i.test(iconText)) return true;
+      if (el.hasAttribute('download') || DOWNLOAD_WORDS.test(label) || /^(file_)?download$/i.test(iconText)) return el;
     }
-    return false;
+    return null;
+  }
+
+  // Diagnostic : raison du masquage, écrite une seule fois par changement d'état
+  let hiddenReason = '';
+  function noteHidden(reason, el) {
+    if (hiddenReason === reason) return;
+    hiddenReason = reason;
+    console.info(`[Igensia PDF] Bouton masqué : ${reason}`, el ? el.outerHTML.slice(0, 300) : '');
   }
 
   function ensureButton() {
     if (!enabled || !document.body) return;
     const existing = document.getElementById(BTN_ID);
-    if (nativeDownloadAvailable()) {
-      if (existing && !running) existing.remove();
-      return;
-    }
     if (!viewerDetected()) {
       // Navigation interne (document → liste des formations) : retirer le bouton
+      if (existing && !running) {
+        existing.remove();
+        noteHidden('aucun visionneur de document détecté');
+      }
+      return;
+    }
+    const native = nativeDownloadControl();
+    if (native) {
       if (existing && !running) existing.remove();
+      noteHidden('le document a déjà un bouton de téléchargement →', native);
       return;
     }
     if (existing) return;
+    hiddenReason = '';
     const btn = document.createElement('button');
     btn.id = BTN_ID;
     btn.type = 'button';
