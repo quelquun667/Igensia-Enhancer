@@ -1,4 +1,12 @@
 # Journal des modifications
+## 2.8.0 - 2026-10-09
+### Nouveautés
+- **Compte à rebours des échéances** : à côté de « Échéance d'envoi du fichier : … », le temps restant s'affiche et se met à jour chaque seconde (« Il reste 2 j 12 h 26 min 50 s »)
+  - Couleur selon l'urgence : moins de 3 jours, moins de 24 h, moins d'une heure (icône qui clignote), puis « Dépassée depuis … »
+  - Heures reconnues sous plusieurs formes (« 23:59 », « 12h », « avant 12h00 », « au plus tard à 12:00 ») ; en cas de doute, rien n'est affiché plutôt qu'une heure fausse
+  - Lisible par les lecteurs d'écran, et copier la ligne d'échéance ne copie pas le compte à rebours
+  - Activable/désactivable dans Paramètres → Outils
+
 ## 2.7.3 - 2026-10-08
 ### Corrections
 - **Bouton « Télécharger en PDF » qui disparaissait** : un lien contenant « download » dans le texte du document, ou une icône de téléchargement ailleurs sur la page (barre latérale, icône cachée ou désactivée), était pris pour le bouton de téléchargement de MonCampus. Seul l'en-tête du document compte désormais

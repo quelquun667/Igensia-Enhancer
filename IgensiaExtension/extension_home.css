@@ -1033,6 +1033,13 @@ input[aria-invalid="true"] {
     cursor: pointer;
 }
 
+/* Réglages suivants de la même carte : séparés par un filet */
+.toggle-row-spaced {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+
 .toggle-row > span {
     display: flex;
     flex-direction: column;

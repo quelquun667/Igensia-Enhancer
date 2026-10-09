@@ -80,6 +80,11 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.sync.get('igs_pdf_button', (data) => { pdfToggle.checked = data.igs_pdf_button !== false; });
     pdfToggle.addEventListener('change', () => chrome.storage.sync.set({ igs_pdf_button: pdfToggle.checked }));
 
+    // Compte à rebours à côté des échéances de MonCampus (deadline_countdown.js), activé par défaut
+    const countdownToggle = document.getElementById('countdown-toggle');
+    chrome.storage.sync.get('igs_deadline_countdown', (data) => { countdownToggle.checked = data.igs_deadline_countdown !== false; });
+    countdownToggle.addEventListener('change', () => chrome.storage.sync.set({ igs_deadline_countdown: countdownToggle.checked }));
+
     // ============ Mises à jour ============
     const checkUpdateBtn = document.getElementById('settings-check-update-btn');
     const updateStatus = document.getElementById('update-status');

@@ -4,9 +4,9 @@
 
 # Igensia Enhancer
 
-## Version: 2.7.3
+## Version: 2.8.0
 
-Extension de navigateur (Chrome, Edge, Firefox) pour MonCampus Igensia : ton prochain cours et tes dernières notes en un clic, un suivi de devoirs par matière, le téléchargement des documents en PDF, et des outils en plus sur les pages de notes, d'absences et d'emploi du temps.
+Extension de navigateur (Chrome, Edge, Firefox) pour MonCampus Igensia : ton prochain cours et tes dernières notes en un clic, un suivi de devoirs par matière, le temps restant avant chaque échéance de rendu, le téléchargement des documents en PDF, et des outils en plus sur les pages de notes, d'absences et d'emploi du temps.
 
 Le code de l'extension se trouve dans le dossier `IgensiaExtension`.
 
@@ -52,6 +52,11 @@ Ce README explique comment télécharger le projet et l'importer dans un navigat
 - Emploi du temps
 	- Recherche dans tout l'emploi du temps (2 mois passés, 8 mois à venir), pas seulement la semaine affichée
 	- Un clic sur un résultat affiche la semaine du cours
+
+- Échéances de rendu
+	- Compte à rebours à côté des échéances (« Il reste 2 j 12 h 26 min 50 s »), mis à jour chaque seconde
+	- Couleur selon l'urgence : moins de 3 jours, moins de 24 h, moins d'une heure, échéance dépassée
+	- Activable/désactivable dans les paramètres
 
 - Notes (pages MonCampus/Wigor)
 	- Calcul automatique de la moyenne pondérée (GPA) et du pourcentage de modules validés

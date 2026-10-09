@@ -1,0 +1,93 @@
+/* Compte à rebours ajouté à côté des échéances de MonCampus (voir deadline_countdown.js) */
+.igs-countdown {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    /* Jamais étirée par une grille ou une flexbox parente */
+    flex: none;
+    align-self: center;
+    justify-self: start;
+    width: max-content;
+    margin-left: 10px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    /* Couleurs opaques : lisible aussi sur fond sombre ou violet */
+    background: #eeecf3;
+    color: #260d66;
+    box-shadow: 0 0 0 1px rgba(38, 13, 102, 0.15);
+    font-family: inherit;
+    font-size: 0.9em;
+    font-style: normal;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: normal;
+    text-transform: none;
+    text-decoration: none;
+    white-space: nowrap;
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+    /* Copier la ligne d'échéance ne copie pas « Il reste … » */
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.igs-countdown svg {
+    flex-shrink: 0;
+    display: block;
+}
+
+/* Texte en toutes lettres pour les lecteurs d'écran (invisible à l'écran) */
+.igs-countdown .igs-countdown-sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Plus de 3 jours : neutre (couleurs Igensia) */
+.igs-countdown.is-ok {
+    background: #eeecf3;
+    color: #260d66;
+}
+
+/* Moins de 3 jours */
+.igs-countdown.is-soon {
+    background: #fff4e5;
+    color: #a14a00;
+    box-shadow: 0 0 0 1px rgba(161, 74, 0, 0.2);
+}
+
+/* Moins de 24 heures */
+.igs-countdown.is-urgent,
+.igs-countdown.is-critical {
+    background: #fde8e8;
+    color: #b91c1c;
+    box-shadow: 0 0 0 1px rgba(185, 28, 28, 0.2);
+}
+
+/* Moins d'une heure : icône qui pulse doucement */
+.igs-countdown.is-critical svg {
+    animation: igs-countdown-pulse 1s ease-in-out infinite;
+}
+
+/* Échéance dépassée */
+.igs-countdown.is-overdue {
+    background: #f1f0f5;
+    color: #b91c1c;
+    box-shadow: 0 0 0 1px rgba(185, 28, 28, 0.2);
+}
+
+@keyframes igs-countdown-pulse {
+    50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .igs-countdown.is-critical svg {
+        animation: none;
+    }
+}
